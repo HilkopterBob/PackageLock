@@ -103,8 +103,10 @@ func registerHost(c *gin.Context) {
 func getHostByAgentID(c *gin.Context) {
 	var agent_by_id Agent
 
+	// gets the value from /agent/:id/host
 	id := c.Param("id")
 
+	// finds the agent by the URL-ID
 	for _, a := range agents {
 		if strconv.Itoa(a.Host_ID) == id {
 			// c.IndentedJSON(http.StatusOK, a)
@@ -112,6 +114,7 @@ func getHostByAgentID(c *gin.Context) {
 		}
 	}
 
+	// finds host with same id as agent
 	for _, host := range hosts {
 		if host.ID == agent_by_id.Agent_ID {
 			c.IndentedJSON(http.StatusOK, host)
