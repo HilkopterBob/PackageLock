@@ -9,7 +9,8 @@
 
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/HilkopterBob/PackageLock/.github%2Fworkflows%2Frun-tests.yml)
 ![GitHub repo file or directory count](https://img.shields.io/github/directory-file-count/HilkopterBob/PackageLock)
-[CodeQL](https://github.com/HilkopterBob/Packagelock/.github/workflows/codeql.yml/badge.svg?branch=main&event=push)](https://github.com/HilkopterBob/PackageLock/.github/workflows/codeql.yml) 
+
+[CodeQL](https://github.com/HilkopterBob/Packagelock/.github/workflows/codeql.yml/badge.svg?branch=main&event=push)
 
 Packagelock is an interactive Serversoftware that shows all packages on your servers collected by agents.  
 
