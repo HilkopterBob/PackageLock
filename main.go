@@ -53,35 +53,24 @@ var agents = []Agent{
 	{Agent_name: "Agent Host3", Agent_secret: "11:11:11:13", Host_ID: 3, Agents_ID: 3},
 }
 
-// Endpoints & Data Aggregation Functions
-
-//  API v0.1 structure:
-//  /hosts
-//  GET:
-//    - shows all hosts and the hosts data
-//  POST:
-//    - adds new host to 'hosts'-slice
-//
-//
-//  /agents
-//  GET:
-//    - shows all agents and the agents data
-//  POST:
-//    - adds new agent to 'agents'-slice
-//
-//  /agent/host
-//  GET:
-//    - shows the host connected to the agent
-//  /agent/:id
-//  GET:
-//    - shows agent with
-
 func getHosts(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, hosts)
 }
 
 func getAgents(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, agents)
+}
+
+func getAgentByID(c *gin.Context) {
+	id := c.Param("id")
+
+	for _, a := range agents {
+		if strconv.Itoa(a.Host_ID) == id {
+			c.IndentedJSON(http.StatusOK, a)
+			return
+		}
+	}
+	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "no agent under that id"})
 }
 
 // POST Functions
@@ -98,25 +87,49 @@ func registerAgent(c *gin.Context) {
 	c.IndentedJSON(http.StatusCreated, newAgent)
 }
 
-func getAgentByID(c *gin.Context) {
-	id := c.Param("id")
+func registerHost(c *gin.Context) {
+	var newHost Host
 
-	for _, a := range agents {
-		if strconv.Itoa(a.Host_ID) == id {
-			c.IndentedJSON(http.StatusOK, a)
-			return
-		}
+	if err := c.BindJSON(&newHost); err != nil {
+		// TODO: Add logs
+		// TODO: Add errorhandling
+		return
 	}
-	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "no agent under that id"})
+
+	hosts = append(hosts, newHost)
+	c.IndentedJSON(http.StatusCreated, newHost)
 }
 
 func main() {
+	// Endpoints & Data Aggregation Functions
+
+	//  API v0.1 structure:
+	//  /hosts
+	//  GET: ✅
+	//    - shows all hosts and the hosts data
+	//  POST: ✅
+	//    - adds new host to 'hosts'-slice
+	//
+	//
+	//  /agents
+	//  GET: ✅
+	//    - shows all agents and the agents data
+	//  POST: ✅
+	//    - adds new agent to 'agents'-slice
+	//
+	//  /agent/host
+	//  GET:
+	//    - shows the host connected to the agent
+	//  /agent/:id
+	//  GET: ✅
+	//    - shows agent with
+
 	router := gin.Default()
 	router.GET("/hosts", getHosts)
+	router.POST("/hosts", registerHost)
 	router.GET("/agents", getAgents)
-	router.GET("/agent/:id", getAgentByID)
-
 	router.POST("/agents", registerAgent)
+	router.GET("/agent/:id", getAgentByID)
 
 	// TODO: create logs
 	// TODO: write error to logs
