@@ -27,7 +27,7 @@ type Package_Manager struct {
 
 type Host struct {
 	// TODO: support different linux distros
-	ID               uint8
+	ID               int
 	Name             string
 	Current_packages []string
 	Network_info     Network_Info
@@ -37,8 +37,8 @@ type Host struct {
 type Agent struct {
 	Agent_name   string
 	Agent_secret string
-	Host_ID      uint8
-	Agents_ID    uint8
+	Host_ID      int
+	Agents_ID    int
 }
 
 var hosts = []Host{
@@ -116,7 +116,7 @@ func main() {
 	//    - shows all agents and the agents data
 	//  POST: ✅
 	//    - adds new agent to 'agents'-slice
-	//
+	// git signing test
 	//  /agent/host
 	//  GET:
 	//    - shows the host connected to the agent
