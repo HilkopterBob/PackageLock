@@ -27,7 +27,7 @@ type Package_Manager struct {
 
 type Host struct {
 	// TODO: support different linux distros
-	ID               int
+	ID               uint8
 	Name             string
 	Current_packages []string
 	Network_info     Network_Info
@@ -37,7 +37,8 @@ type Host struct {
 type Agent struct {
 	Agent_name   string
 	Agent_secret string
-	Host_ID      int
+	Host_ID      uint8
+	Agents_ID    uint8
 }
 
 var hosts = []Host{
@@ -47,12 +48,34 @@ var hosts = []Host{
 }
 
 var agents = []Agent{
-	{Agent_name: "Agent Host1", Agent_secret: "11:11:11:11", Host_ID: 1},
-	{Agent_name: "Agent Host2", Agent_secret: "11:11:11:12", Host_ID: 2},
-	{Agent_name: "Agent Host3", Agent_secret: "11:11:11:13", Host_ID: 3},
+	{Agent_name: "Agent Host1", Agent_secret: "11:11:11:11", Host_ID: 1, Agents_ID: 1},
+	{Agent_name: "Agent Host2", Agent_secret: "11:11:11:12", Host_ID: 2, Agents_ID: 2},
+	{Agent_name: "Agent Host3", Agent_secret: "11:11:11:13", Host_ID: 3, Agents_ID: 3},
 }
 
 // Endpoints & Data Aggregation Functions
+
+//  API v0.1 structure:
+//  /hosts
+//  GET:
+//    - shows all hosts and the hosts data
+//  POST:
+//    - adds new host to 'hosts'-slice
+//
+//
+//  /agents
+//  GET:
+//    - shows all agents and the agents data
+//  POST:
+//    - adds new agent to 'agents'-slice
+//
+//  /agent/host
+//  GET:
+//    - shows the host connected to the agent
+//  /agent/:id
+//  GET:
+//    - shows agent with
+
 func getHosts(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, hosts)
 }
@@ -64,12 +87,6 @@ func getAgents(c *gin.Context) {
 // POST Functions
 func registerAgent(c *gin.Context) {
 	var newAgent Agent
-	// fmt.Println(c.BindJSON(&newAgent))
-
-	response, err := c.GetRawData()
-	if err == nil {
-		fmt.Println(response)
-	}
 
 	if err := c.BindJSON(&newAgent); err != nil {
 		// TODO: Add logs
@@ -97,8 +114,7 @@ func main() {
 	router := gin.Default()
 	router.GET("/hosts", getHosts)
 	router.GET("/agents", getAgents)
-	router.GET("/agents/:id", getAgentByID)
-	router.POST("/agents/register", controllers.registerAgent)
+	router.GET("/agent/:id", getAgentByID)
 
 	router.POST("/agents", registerAgent)
 
