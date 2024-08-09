@@ -38,19 +38,19 @@ type Agent struct {
 	Agent_name   string
 	Agent_secret string
 	Host_ID      int
-	Agents_ID    int
+	Agent_ID     int
 }
 
 var hosts = []Host{
 	{ID: 1, Name: "Host1", Network_info: Network_Info{Ip_addr: "192.168.1.1", Mac_addr: "AA:BB:CC:DD:EE:FF"}, Package_manager: Package_Manager{Package_manager_name: "pacman", Package_repos: []string{"Repo1", "Repo2", "Repo3"}}, Current_packages: []string{"Package1", "package2", "Package3"}},
 	{ID: 2, Name: "Host2", Network_info: Network_Info{Ip_addr: "192.168.1.2", Mac_addr: "AA:BB:CC:DD:EF:00"}, Package_manager: Package_Manager{Package_manager_name: "pacman", Package_repos: []string{"Repo1", "Repo2", "Repo3"}}, Current_packages: []string{"Package1", "package2", "Package3"}},
-	{ID: 3, Name: "Host3", Network_info: Network_Info{Ip_addr: "192.168.1.3", Mac_addr: "AA:BB:CC:DD:EF:01"}, Package_manager: Package_Manager{Package_manager_name: "pacman", Package_repos: []string{"Repo1", "Repo2", "Repo3"}}, Current_packages: []string{"Package1", "package2", "Package3"}},
+	{ID: 3, Name: "Ich liebe dich", Network_info: Network_Info{Ip_addr: "192.168.1.3", Mac_addr: "AA:BB:CC:DD:EF:01"}, Package_manager: Package_Manager{Package_manager_name: "pacman", Package_repos: []string{"Repo1", "Repo2", "Repo3"}}, Current_packages: []string{"Package1", "package2", "Package3"}},
 }
 
 var agents = []Agent{
-	{Agent_name: "Agent Host1", Agent_secret: "11:11:11:11", Host_ID: 1, Agents_ID: 1},
-	{Agent_name: "Agent Host2", Agent_secret: "11:11:11:12", Host_ID: 2, Agents_ID: 2},
-	{Agent_name: "Agent Host3", Agent_secret: "11:11:11:13", Host_ID: 3, Agents_ID: 3},
+	{Agent_name: "Agent Host1", Agent_secret: "11:11:11:11", Host_ID: 1, Agent_ID: 1},
+	{Agent_name: "Agent Host2", Agent_secret: "11:11:11:12", Host_ID: 2, Agent_ID: 2},
+	{Agent_name: "Agent Host3", Agent_secret: "11:11:11:13", Host_ID: 3, Agent_ID: 3},
 }
 
 func getHosts(c *gin.Context) {
@@ -100,6 +100,27 @@ func registerHost(c *gin.Context) {
 	c.IndentedJSON(http.StatusCreated, newHost)
 }
 
+func getHostByAgentID(c *gin.Context) {
+	var agent_by_id Agent
+
+	id := c.Param("id")
+
+	for _, a := range agents {
+		if strconv.Itoa(a.Host_ID) == id {
+			// c.IndentedJSON(http.StatusOK, a)
+			agent_by_id = a
+		}
+	}
+
+	for _, host := range hosts {
+		if host.ID == agent_by_id.Agent_ID {
+			c.IndentedJSON(http.StatusOK, host)
+			return
+		}
+	}
+	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "no agent under that id"})
+}
+
 func main() {
 	// Endpoints & Data Aggregation Functions
 
@@ -116,13 +137,18 @@ func main() {
 	//    - shows all agents and the agents data
 	//  POST: ✅
 	//    - adds new agent to 'agents'-slice
-	// git signing test
-	//  /agent/host
+	//  /agent/:id/host ✅
 	//  GET:
 	//    - shows the host connected to the agent
 	//  /agent/:id
 	//  GET: ✅
 	//    - shows agent with
+	//
+	//  /commandqueue/agent
+	//  GET:
+	//    - respond with 'no commands' or 'new commands'
+	//  POST:
+	//    - post Agent.agent_secret_key, respond with commands
 
 	router := gin.Default()
 	router.GET("/hosts", getHosts)
@@ -130,6 +156,7 @@ func main() {
 	router.GET("/agents", getAgents)
 	router.POST("/agents", registerAgent)
 	router.GET("/agent/:id", getAgentByID)
+	router.GET("/agent/:id/host", getHostByAgentID)
 
 	// TODO: create logs
 	// TODO: write error to logs
