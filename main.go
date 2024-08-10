@@ -1,15 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"strconv"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 )
-
-// Used for Agent-SignUps
-// var agent_secret_key string = "Secret_Key"
 
 // Data structs
 
@@ -124,7 +124,54 @@ func getHostByAgentID(c *gin.Context) {
 	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "no agent under that id"})
 }
 
+func startViper() {
+	viper.SetConfigName("config")            // name of config file (without extension)
+	viper.SetConfigType("yaml")              // REQUIRED if the config file does not have the extension in the name
+	viper.AddConfigPath("/etc/packagelock/") // path to look for the config file in  etc/
+	viper.AddConfigPath(".")                 // optionally look for config in the working directory
+
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			createDefaultConfig()
+			startViper()
+			return
+		} else {
+			panic(fmt.Errorf("fatal error config file: %w", err))
+		}
+	}
+
+	viper.OnConfigChange(func(e fsnotify.Event) {
+		fmt.Println("Config file changed:", e.Name)
+	})
+	viper.WatchConfig()
+}
+
+func createDefaultConfig() {
+	// TODO: Add default config
+	yamlExample := []byte(`
+general:
+  debug: True
+  production: False
+  Port: 8080
+
+Network:
+  FQDN: "packagelock.company.com"
+  ForceHTTP: False
+  SSL:
+    CertificatePath: "/etc/packagelock/ssl/cert.pem"
+    PrivateKeyPath: "/etc/packagelock/ssl/privkey.pem"
+    AllowSelfSigned: False
+  `)
+
+	viper.ReadConfig(bytes.NewBuffer(yamlExample))
+
+	viper.WriteConfigAs("./config.yaml")
+}
+
 func main() {
+	startViper()
+	fmt.Println(viper.AllSettings())
+
 	// Endpoints & Data Aggregation Functions
 
 	//  API v0.1 structure:
@@ -164,6 +211,8 @@ func main() {
 	// TODO: create logs
 	// TODO: write error to logs
 	// TODO: handle error 'This port is blocked, check your FW or smth'
+
+	// TODO: use FQDN and Port from config file
 	err := router.Run("localhost:8080")
 	if err != nil {
 		fmt.Println(err)
