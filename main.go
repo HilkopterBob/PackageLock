@@ -213,7 +213,8 @@ func main() {
 	// TODO: handle error 'This port is blocked, check your FW or smth'
 
 	// TODO: use FQDN and Port from config file
-	err := router.Run("localhost:8080")
+	fmt.Println(viper.Get("network.fqdn"))
+	err := router.Run(viper.GetString("network.fqdn") + ":" + viper.GetString("network.port"))
 	if err != nil {
 		fmt.Println(err)
 	}
