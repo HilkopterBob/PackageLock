@@ -127,6 +127,12 @@ TODO: explain usage
 - [ ] backend-api to manage Agents & Hosts
 - [ ] frontend to visualize backend data
 - [ ] installable agent as background daemon
+- [ ] config management
+- [ ] TLS Encryption
+- [ ] Secured API
+- [ ] Best Practice based Package Layout
+
+
 
 TODO: create Issue template:
 See the [open issues](https://github.com/HilkopterBob/PackageLock/issues) for a full list of proposed features (and known issues).
