@@ -35,7 +35,7 @@
 <br />
 <div align="center">
   <a href="https://github.com/HilkopterBob/PackageLock">
-    <img src="README-Assets/logo.png" alt="Logo" width="200" height="80">
+    <img src="README-Assets/logo.png" alt="Logo">
   </a>
 
 <h3 align="center">PackageLock</h3>
