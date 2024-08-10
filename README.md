@@ -162,7 +162,7 @@ Don't forget to give the project a star! Thanks again!
 <!-- LICENSE -->
 ## License
 
-Distributed under the MIT License. See `LICENSE.txt` for more information.
+Distributed under the MIT License. See `LICENSE` for more information.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -189,7 +189,7 @@ Project Link: [https://github.com/HilkopterBob/PackageLock](https://github.com/H
 [issues-shield]: https://img.shields.io/github/issues/HilkopterBob/PackageLock.svg?style=for-the-badge
 [issues-url]: https://github.com/HilkopterBob/PackageLock/issues
 [license-shield]: https://img.shields.io/github/license/HilkopterBob/PackageLock.svg?style=for-the-badge
-[license-url]: https://github.com/HilkopterBob/PackageLock/blob/master/LICENSE.txt
+[license-url]: https://github.com/HilkopterBob/PackageLock/blob/master/LICENSE
 [product-screenshot]: images/screenshot.png
 [Next.js]: https://img.shields.io/badge/next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white
 [Next-url]: https://nextjs.org/
