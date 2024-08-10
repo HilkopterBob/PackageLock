@@ -1,10 +1,10 @@
 general:
   debug: true
-  port: 8080
   production: false
 network:
   forcehttp: true
   fqdn: localhost
+  port: 8080
   ssl:
     allowselfsigned: true
     certificatepath: /etc/packagelock/ssl/cert.pem
