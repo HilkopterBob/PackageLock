@@ -1,0 +1,11 @@
+general:
+  debug: true
+  port: 8080
+  production: false
+network:
+  forcehttp: true
+  fqdn: localhost
+  ssl:
+    allowselfsigned: true
+    certificatepath: /etc/packagelock/ssl/cert.pem
+    privatekeypath: /etc/packagelock/ssl/privkey.pem
