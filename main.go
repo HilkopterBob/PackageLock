@@ -163,9 +163,15 @@ Network:
     AllowSelfSigned: False
   `)
 
-	viper.ReadConfig(bytes.NewBuffer(yamlExample))
+	err := viper.ReadConfig(bytes.NewBuffer(yamlExample))
+	if err != nil {
+		panic(fmt.Errorf("fatal error while reading config file: %w", err))
+	}
 
-	viper.WriteConfigAs("./config.yaml")
+	err_write := viper.WriteConfigAs("./config.yaml")
+	if err_write != nil {
+		panic(fmt.Errorf("fatal error while writing config file: %w", err))
+	}
 }
 
 func main() {
