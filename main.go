@@ -1,12 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"net/http"
+	"packagelock/config"
+	"packagelock/structs"
 	"strconv"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 )
@@ -14,40 +14,14 @@ import (
 // Data structs
 
 // TODO: support for multiple network adapters.
-type Network_Info struct {
-	Ip_addr  string
-	Mac_addr string
-	// TODO: add domain or FQDN
+
+var hosts = []structs.Host{
+	{ID: 1, Name: "Host1", Network_info: structs.Network_Info{Ip_addr: "192.168.1.1", Mac_addr: "AA:BB:CC:DD:EE:FF"}, Package_manager: structs.Package_Manager{Package_manager_name: "pacman", Package_repos: []string{"Repo1", "Repo2", "Repo3"}}, Current_packages: []string{"Package1", "package2", "Package3"}},
+	{ID: 2, Name: "Host2", Network_info: structs.Network_Info{Ip_addr: "192.168.1.2", Mac_addr: "AA:BB:CC:DD:EF:00"}, Package_manager: structs.Package_Manager{Package_manager_name: "pacman", Package_repos: []string{"Repo1", "Repo2", "Repo3"}}, Current_packages: []string{"Package1", "package2", "Package3"}},
+	{ID: 3, Name: "Host3", Network_info: structs.Network_Info{Ip_addr: "192.168.1.3", Mac_addr: "AA:BB:CC:DD:EF:01"}, Package_manager: structs.Package_Manager{Package_manager_name: "pacman", Package_repos: []string{"Repo1", "Repo2", "Repo3"}}, Current_packages: []string{"Package1", "package2", "Package3"}},
 }
 
-type Package_Manager struct {
-	Package_manager_name string
-	Package_repos        []string
-}
-
-type Host struct {
-	// TODO: support different linux distros
-	ID               int
-	Name             string
-	Current_packages []string
-	Network_info     Network_Info
-	Package_manager  Package_Manager
-}
-
-type Agent struct {
-	Agent_name   string
-	Agent_secret string
-	Host_ID      int
-	Agent_ID     int
-}
-
-var hosts = []Host{
-	{ID: 1, Name: "Host1", Network_info: Network_Info{Ip_addr: "192.168.1.1", Mac_addr: "AA:BB:CC:DD:EE:FF"}, Package_manager: Package_Manager{Package_manager_name: "pacman", Package_repos: []string{"Repo1", "Repo2", "Repo3"}}, Current_packages: []string{"Package1", "package2", "Package3"}},
-	{ID: 2, Name: "Host2", Network_info: Network_Info{Ip_addr: "192.168.1.2", Mac_addr: "AA:BB:CC:DD:EF:00"}, Package_manager: Package_Manager{Package_manager_name: "pacman", Package_repos: []string{"Repo1", "Repo2", "Repo3"}}, Current_packages: []string{"Package1", "package2", "Package3"}},
-	{ID: 3, Name: "Host3", Network_info: Network_Info{Ip_addr: "192.168.1.3", Mac_addr: "AA:BB:CC:DD:EF:01"}, Package_manager: Package_Manager{Package_manager_name: "pacman", Package_repos: []string{"Repo1", "Repo2", "Repo3"}}, Current_packages: []string{"Package1", "package2", "Package3"}},
-}
-
-var agents = []Agent{
+var agents = []structs.Agent{
 	{Agent_name: "Agent Host1", Agent_secret: "11:11:11:11", Host_ID: 1, Agent_ID: 1},
 	{Agent_name: "Agent Host2", Agent_secret: "11:11:11:12", Host_ID: 2, Agent_ID: 2},
 	{Agent_name: "Agent Host3", Agent_secret: "11:11:11:13", Host_ID: 3, Agent_ID: 3},
@@ -75,7 +49,7 @@ func getAgentByID(c *gin.Context) {
 
 // POST Functions
 func registerAgent(c *gin.Context) {
-	var newAgent Agent
+	var newAgent structs.Agent
 
 	if err := c.BindJSON(&newAgent); err != nil {
 		// TODO: Add logs
@@ -88,7 +62,7 @@ func registerAgent(c *gin.Context) {
 }
 
 func registerHost(c *gin.Context) {
-	var newHost Host
+	var newHost structs.Host
 
 	if err := c.BindJSON(&newHost); err != nil {
 		// TODO: Add logs
@@ -101,7 +75,7 @@ func registerHost(c *gin.Context) {
 }
 
 func getHostByAgentID(c *gin.Context) {
-	var agent_by_id Agent
+	var agent_by_id structs.Agent
 
 	// gets the value from /agent/:id/host
 	id := c.Param("id")
@@ -124,58 +98,8 @@ func getHostByAgentID(c *gin.Context) {
 	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "no agent under that id"})
 }
 
-func startViper() {
-	viper.SetConfigName("config")            // name of config file (without extension)
-	viper.SetConfigType("yaml")              // REQUIRED if the config file does not have the extension in the name
-	viper.AddConfigPath("/etc/packagelock/") // path to look for the config file in  etc/
-	viper.AddConfigPath(".")                 // optionally look for config in the working directory
-
-	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			createDefaultConfig()
-			startViper()
-			return
-		} else {
-			panic(fmt.Errorf("fatal error config file: %w", err))
-		}
-	}
-
-	viper.OnConfigChange(func(e fsnotify.Event) {
-		fmt.Println("Config file changed:", e.Name)
-	})
-	viper.WatchConfig()
-}
-
-func createDefaultConfig() {
-	// TODO: Add default config
-	yamlExample := []byte(`
-general:
-  debug: True
-  production: False
-  Port: 8080
-
-Network:
-  FQDN: "packagelock.company.com"
-  ForceHTTP: False
-  SSL:
-    CertificatePath: "/etc/packagelock/ssl/cert.pem"
-    PrivateKeyPath: "/etc/packagelock/ssl/privkey.pem"
-    AllowSelfSigned: False
-  `)
-
-	err := viper.ReadConfig(bytes.NewBuffer(yamlExample))
-	if err != nil {
-		panic(fmt.Errorf("fatal error while reading config file: %w", err))
-	}
-
-	err_write := viper.WriteConfigAs("./config.yaml")
-	if err_write != nil {
-		panic(fmt.Errorf("fatal error while writing config file: %w", err))
-	}
-}
-
 func main() {
-	startViper()
+	config.StartViper()
 	fmt.Println(viper.AllSettings())
 
 	// Endpoints & Data Aggregation Functions
@@ -206,6 +130,8 @@ func main() {
 	//  POST:
 	//    - post Agent.agent_secret_key, respond with commands
 
+	// TODO: Group Routes via:
+	// https://stackoverflow.com/questions/62906766/how-to-group-routes-in-gin
 	router := gin.Default()
 	router.GET("/hosts", getHosts)
 	router.POST("/hosts", registerHost)

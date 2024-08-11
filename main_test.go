@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"packagelock/structs"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -20,7 +21,7 @@ func SetUpRouter() *gin.Engine {
 func Test_registerAgent(t *testing.T) {
 	router := SetUpRouter()
 	router.POST("/agents", registerAgent)
-	test_agent := Agent{
+	test_agent := structs.Agent{
 		Agent_name:   "Test Agent",
 		Agent_secret: "FF:FF:FF:FF:FF:FF",
 		Host_ID:      9,
@@ -38,14 +39,14 @@ func Test_registerAgent(t *testing.T) {
 func Test_registerHost(t *testing.T) {
 	router := SetUpRouter()
 	router.POST("/hosts", registerHost)
-	test_Host := Host{
+	test_Host := structs.Host{
 		ID:   99,
 		Name: "Testhost",
-		Network_info: Network_Info{
+		Network_info: structs.Network_Info{
 			Ip_addr:  "192.168.1.3",
 			Mac_addr: "AA:BB:CC:DD:EF:01",
 		},
-		Package_manager: Package_Manager{
+		Package_manager: structs.Package_Manager{
 			Package_manager_name: "pacman",
 			Package_repos: []string{
 				"Repo1",
@@ -75,7 +76,7 @@ func Test_getAgents(t *testing.T) {
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)
 
-	var agents []Agent
+	var agents []structs.Agent
 	err := json.Unmarshal(response.Body.Bytes(), &agents)
 	if err != nil {
 		fmt.Println(err)
@@ -92,7 +93,7 @@ func Test_getHosts(t *testing.T) {
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)
 
-	var hosts []Host
+	var hosts []structs.Host
 	err := json.Unmarshal(response.Body.Bytes(), &hosts)
 	if err != nil {
 		fmt.Println(err)
@@ -109,7 +110,7 @@ func Test_getAgentByID(t *testing.T) {
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)
 
-	var agent Agent
+	var agent structs.Agent
 	err := json.Unmarshal(response.Body.Bytes(), &agent)
 	if err != nil {
 		fmt.Println(response.Body)
@@ -128,7 +129,7 @@ func Test_getHostByAgentID(t *testing.T) {
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)
 
-	var host Host
+	var host structs.Host
 	err := json.Unmarshal(response.Body.Bytes(), &host)
 	if err != nil {
 		fmt.Println(response.Body)
