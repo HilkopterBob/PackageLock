@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"packagelock/structs"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -19,8 +20,8 @@ func SetUpRouter() *gin.Engine {
 
 func Test_registerAgent(t *testing.T) {
 	router := SetUpRouter()
-	router.POST("/agents", registerAgent)
-	test_agent := Agent{
+	router.POST("/v1/agent/register", registerAgent)
+	test_agent := structs.Agent{
 		Agent_name:   "Test Agent",
 		Agent_secret: "FF:FF:FF:FF:FF:FF",
 		Host_ID:      9,
@@ -28,7 +29,7 @@ func Test_registerAgent(t *testing.T) {
 	}
 
 	json_test_agent, _ := json.Marshal(test_agent)
-	request, _ := http.NewRequest("POST", "/agents", bytes.NewBuffer(json_test_agent))
+	request, _ := http.NewRequest("POST", "/v1/agent/register", bytes.NewBuffer(json_test_agent))
 
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)
@@ -36,16 +37,19 @@ func Test_registerAgent(t *testing.T) {
 }
 
 func Test_registerHost(t *testing.T) {
+	// FIXME: This test passes with broken host objects!
+	// FIXME: Control/COrrect Other tests!
+
 	router := SetUpRouter()
-	router.POST("/hosts", registerHost)
-	test_Host := Host{
+	router.POST("/v1/host/register", registerHost)
+	test_Host := structs.Host{
 		ID:   99,
 		Name: "Testhost",
-		Network_info: Network_Info{
+		Network_info: structs.Network_Info{
 			Ip_addr:  "192.168.1.3",
 			Mac_addr: "AA:BB:CC:DD:EF:01",
 		},
-		Package_manager: Package_Manager{
+		Package_manager: structs.Package_Manager{
 			Package_manager_name: "pacman",
 			Package_repos: []string{
 				"Repo1",
@@ -61,7 +65,9 @@ func Test_registerHost(t *testing.T) {
 	}
 
 	json_test_host, _ := json.Marshal(test_Host)
-	request, _ := http.NewRequest("POST", "/hosts", bytes.NewBuffer(json_test_host))
+	request, _ := http.NewRequest("POST", "/v1/host/register", bytes.NewBuffer(json_test_host))
+
+	fmt.Println(router.GET("/v1/general/hosts", getAgents))
 
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)
@@ -70,12 +76,12 @@ func Test_registerHost(t *testing.T) {
 
 func Test_getAgents(t *testing.T) {
 	router := SetUpRouter()
-	router.GET("/agents", getAgents)
-	request, _ := http.NewRequest("GET", "/agents", nil)
+	router.GET("/v1/general/agents", getAgents)
+	request, _ := http.NewRequest("GET", "/v1/general/agents", nil)
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)
 
-	var agents []Agent
+	var agents []structs.Agent
 	err := json.Unmarshal(response.Body.Bytes(), &agents)
 	if err != nil {
 		fmt.Println(err)
@@ -87,12 +93,12 @@ func Test_getAgents(t *testing.T) {
 
 func Test_getHosts(t *testing.T) {
 	router := SetUpRouter()
-	router.GET("/hosts", getHosts)
-	request, _ := http.NewRequest("GET", "/hosts", nil)
+	router.GET("/v1/general/hosts", getHosts)
+	request, _ := http.NewRequest("GET", "/v1/general/hosts", nil)
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)
 
-	var hosts []Host
+	var hosts []structs.Host
 	err := json.Unmarshal(response.Body.Bytes(), &hosts)
 	if err != nil {
 		fmt.Println(err)
@@ -104,12 +110,12 @@ func Test_getHosts(t *testing.T) {
 
 func Test_getAgentByID(t *testing.T) {
 	router := SetUpRouter()
-	router.GET("/agent/:id", getAgentByID)
-	request, _ := http.NewRequest("GET", "/agent/1", nil)
+	router.GET("/v1/agent/:id", getAgentByID)
+	request, _ := http.NewRequest("GET", "/v1/agent/1", nil)
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)
 
-	var agent Agent
+	var agent structs.Agent
 	err := json.Unmarshal(response.Body.Bytes(), &agent)
 	if err != nil {
 		fmt.Println(response.Body)
@@ -123,12 +129,12 @@ func Test_getAgentByID(t *testing.T) {
 
 func Test_getHostByAgentID(t *testing.T) {
 	router := SetUpRouter()
-	router.GET("/agent/:id/host", getHostByAgentID)
-	request, _ := http.NewRequest("GET", "/agent/1/host", nil)
+	router.GET("/v1/agent/:id/host", getHostByAgentID)
+	request, _ := http.NewRequest("GET", "/v1/agent/1/host", nil)
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)
 
-	var host Host
+	var host structs.Host
 	err := json.Unmarshal(response.Body.Bytes(), &host)
 	if err != nil {
 		fmt.Println(response.Body)

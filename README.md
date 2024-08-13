@@ -131,6 +131,8 @@ TODO: explain usage
 - [ ] TLS Encryption
 - [ ] Secured API
 - [ ] Best Practice based Package Layout
+- [ ] Check Vars and Func-Names for naming convention
+- [ ] persistent storage
 
 
 
