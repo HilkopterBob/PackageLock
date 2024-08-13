@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"packagelock/config"
-	"packagelock/routers"
+	"packagelock/server"
 
 	"github.com/spf13/viper"
 )
@@ -16,7 +16,7 @@ func main() {
 	config.StartViper()
 	fmt.Println(viper.AllSettings())
 
-	router := routers.AddRoutes()
+	router := server.AddRoutes()
 	err := router.Router.Run("localhost:9090")
 	if err != nil {
 		panic(fmt.Errorf("fatal error config file: %w", err))
