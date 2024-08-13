@@ -14,4 +14,4 @@ jobs:
       - name: Install dependencies
         run: go get .
       - name: Test with the Go CLI
-        run: go go run gotest.tools/gotestsum@latest
+        run: go run gotest.tools/gotestsum@latest
