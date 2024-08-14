@@ -3,7 +3,6 @@ package handler
 import (
 	"net/http"
 	"packagelock/structs"
-	"packagelock/test_data"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,6 +16,6 @@ func RegisterHost(c *gin.Context) {
 		return
 	}
 
-	test_data.Hosts = append(test_data.Hosts, newHost)
+	Hosts = append(Hosts, newHost)
 	c.IndentedJSON(http.StatusCreated, newHost)
 }
