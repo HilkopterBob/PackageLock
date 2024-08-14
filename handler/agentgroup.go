@@ -8,6 +8,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GetAgentByID filters a slice of Agents for a matching Agent.Agent_ID.
+// It returns IndentedJSON with: http.StatusOK or http.StatusNotFound.
 func GetAgentByID(c *gin.Context) {
 	id := c.Param("id")
 
