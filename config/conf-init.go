@@ -18,32 +18,32 @@ type ConfigProvider interface {
 	WatchConfig()
 	WriteConfigAs(path string) error
 	ReadConfig(in io.Reader) error
+	AllSettings() map[string]any
+	GetString(string string) string
 }
 
 // TODO: How to test?
-func StartViper(config ConfigProvider) {
+func StartViper(config ConfigProvider) ConfigProvider {
 	config.SetConfigName("config")            // name of config file (without extension)
 	config.SetConfigType("yaml")              // REQUIRED if the config file does not have the extension in the name
 	config.AddConfigPath("/etc/packagelock/") // path to look for the config file in  etc/
 	config.AddConfigPath(".")                 // optionally look for config in the working directory
 
 	// if no config file found a default file will be Created
-	// than a rescan
+	// than a rescan. new_config is the same as config, but needs a different name
+	// as it cont be argument return-store
 	// if there is a different error -> panic & exit
 	if err := config.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			CreateDefaultConfig(config)
-			StartViper(config)
-			return
+			new_config := StartViper(config)
+			return new_config
 		} else {
 			panic(fmt.Errorf("fatal error config file: %w", err))
 		}
 	}
 
-	config.OnConfigChange(func(e fsnotify.Event) {
-		fmt.Println("Config file changed:", e.Name)
-	})
-	config.WatchConfig()
+	return config
 }
 
 func CreateDefaultConfig(config ConfigProvider) {
