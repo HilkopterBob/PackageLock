@@ -13,7 +13,7 @@ import (
 // TODO: support for multiple network adapters.
 
 func main() {
-	config.StartViper()
+	config.StartViper(viper.New())
 	fmt.Println(viper.AllSettings())
 
 	router := server.AddRoutes()
