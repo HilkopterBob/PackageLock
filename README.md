@@ -133,7 +133,6 @@ TODO: explain usage
 - [ ] Best Practice based Package Layout
 - [ ] Check Vars and Func-Names for naming convention
 - [ ] persistent storage
-- [ ] add docstrings to functions for IDE help
 - [ ] implement interfaces for external functions for easier mocking in tests
 
 
