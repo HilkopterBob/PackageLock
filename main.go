@@ -6,7 +6,6 @@ import (
 	"packagelock/server"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/fvbock/endless"
 	"github.com/spf13/viper"
 )
 
@@ -20,36 +19,16 @@ func main() {
 
 	router := server.AddRoutes()
 
-	stop := make(chan bool)
-
-	// BUG: TOTALLY FUCKED UP!
-
-	go func() {
-		for {
-			select {
-			case <-stop:
-				fmt.Println("server killed.")
-				return
-			default:
-				err := endless.ListenAndServe(Config.GetString("network.fqdn")+":"+Config.GetString("network.port"), router.Router)
-				if err != nil {
-					panic(fmt.Errorf("fatal error in server: %w", err))
-				}
-			}
-		}
-	}()
+	err := router.Router.Run(Config.GetString("network.fqdn") + ":" + Config.GetString("network.port"))
+	if err != nil {
+		panic(fmt.Errorf("fatal error in server: %w", err))
+	}
 
 	Config.OnConfigChange(func(e fsnotify.Event) {
 		fmt.Println("Config file changed:", e.Name)
-		fmt.Println("Restarting Server...")
-		stop <- true
-		err := endless.ListenAndServe(Config.GetString("network.fqdn")+":"+Config.GetString("network.port"), router.Router)
-		if err != nil {
-			panic(fmt.Errorf("fatal error in server: %w", err))
-		}
+		fmt.Println("Restart to take effect.")
 	})
 	Config.WatchConfig()
-	select {}
 
 	// Endpoints & Data Aggregation Functions
 
