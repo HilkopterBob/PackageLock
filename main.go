@@ -1,10 +1,17 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
 	"packagelock/config"
 	"packagelock/server"
+	"syscall"
+	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
 )
 
@@ -13,61 +20,68 @@ import (
 // TODO: support for multiple network adapters.
 
 func main() {
-	config.StartViper(viper.New())
-	fmt.Println(viper.AllSettings())
+	Config := config.StartViper(viper.New())
+	fmt.Println(Config.AllSettings())
 
-	router := server.AddRoutes()
-	err := router.Router.Run("localhost:9090")
-	if err != nil {
-		panic(fmt.Errorf("fatal error config file: %w", err))
-	}
+	// Channel to signal the restart
+	restartChan := make(chan struct{})
+	quitChan := make(chan os.Signal, 1)
+	signal.Notify(quitChan, os.Interrupt, syscall.SIGTERM)
 
-	// Endpoints & Data Aggregation Functions
+	// Start the server in a goroutine
+	go func() {
+		for {
+			router := server.AddRoutes()
+			serverAddr := Config.GetString("network.fqdn") + ":" + Config.GetString("network.port")
+			srv := &http.Server{
+				Addr:    serverAddr,
+				Handler: router.Router.Handler(),
+			}
 
-	//  API v0.1 structure,:
-	//  /hosts
-	//  GET: ✅
-	//    - shows all hosts and the hosts data
-	//  POST: ✅
-	//    - adds new host to 'hosts'-slice
-	//
-	//
-	//  /agents
-	//  GET: ✅
-	//    - shows all agents and the agents data
-	//  POST: ✅
-	//    - adds new agent to 'agents'-slice
-	//  /agent/:id/host ✅
-	//  GET:
-	//    - shows the host connected to the agent
-	//  /agent/:id
-	//  GET: ✅
-	//    - shows agent with
-	//
-	//  /commandqueue/agent
-	//  GET:
-	//    - respond with 'no commands' or 'new commands'
-	//  POST:
-	//    - post Agent.agent_secret_key, respond with commands
+			go func() {
+				fmt.Printf("Starting server at %s...\n", serverAddr)
+				if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+					fmt.Printf("Server error: %s\n", err)
+				}
+			}()
 
-	// TODO: Group Routes via:
-	// https://stackoverflow.com/questions/62906766/how-to-group-routes-in-gin
-	// router := gin.Default()
-	// router.GET("/hosts", getHosts)
-	// router.POST("/hosts", registerHost)
-	// router.GET("/agents", getAgents)
-	// router.POST("/agents", registerAgent)
-	// router.GET("/agent/:id", getAgentByID)
-	// router.GET("/agent/:id/host", getHostByAgentID)
+			// Wait for either a restart signal or termination signal
+			select {
+			case <-restartChan:
+				fmt.Println("Restarting server...")
 
-	// TODO: create logs
-	// TODO: write error to logs
-	// TODO: handle error 'This port is blocked, check your FW or smth'
+				// Gracefully shutdown the server
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				if err := srv.Shutdown(ctx); err != nil {
+					fmt.Printf("Server shutdown failed: %v\n", err)
+				} else {
+					fmt.Println("Server stopped.")
+				}
 
-	// TODO: use FQDN and Port from config file
-	// fmt.Println(viper.Get("network.fqdn"))
-	// err := router.Run(viper.GetString("network.fqdn") + ":" + viper.GetString("network.port"))
-	//if err != nil {
-	//	fmt.Println(err)
-	//}
+			case <-quitChan:
+				fmt.Println("Shutting down server...")
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				if err := srv.Shutdown(ctx); err != nil {
+					fmt.Printf("Server shutdown failed: %v\n", err)
+				} else {
+					fmt.Println("Server stopped gracefully.")
+				}
+				return
+			}
+		}
+	}()
+
+	// Watch for configuration changes
+	Config.OnConfigChange(func(e fsnotify.Event) {
+		fmt.Println("Config file changed:", e.Name)
+		fmt.Println("Restarting to apply changes...")
+		restartChan <- struct{}{} // Send signal to restart the server
+	})
+	Config.WatchConfig()
+
+	// Block until quit signal is received
+	<-quitChan
+	fmt.Println("Main process exiting.")
 }

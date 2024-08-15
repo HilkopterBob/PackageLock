@@ -41,6 +41,7 @@
 <h3 align="center">PackageLock</h3>
 
   <p align="center">
+    Leaning Project!
     PackageLock aims to be the distro-agnostic 🔋-included one-stop Solution for patchmanagement on linux systems.
     <br />
     <a href="https://github.com/HilkopterBob/PackageLock"><strong>Explore the docs (COMING SOON!) »</strong></a>
