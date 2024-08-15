@@ -17,11 +17,3 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           goos: linux
           goarch: amd64
-      - uses: mr-smithers-excellent/docker-build-push@v2
-        with:
-          image: hilkopterbob/image
-          tag: latest
-          registry: hub.docker.com
-          dockerfile: Dockerfile
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}

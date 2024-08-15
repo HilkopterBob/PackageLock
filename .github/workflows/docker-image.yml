@@ -1,0 +1,27 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+  release:
+    types: ["created"]
+
+jobs:
+  build:
+    runs-on: golang_latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the Docker image
+        run: docker build . --file Dockerfile --tag PackageLock:$(date +%s)
+
+      - uses: mr-smithers-excellent/docker-build-push@v2
+        with:
+          image: HilkopterBob/PackageLock
+          tag: latest
+          registry: ghcr.io
+          dockerfile: Dockerfile.ci
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
