@@ -3,7 +3,7 @@ general:
   production: false
 network:
   forcehttp: true
-  fqdn: localhost
+  fqdn: 0.0.0.0
   port: 8080
   ssl:
     allowselfsigned: true
