@@ -103,13 +103,16 @@ TODO: general deployment?
 
 ### Prerequisites
 
-TODO: create prerequisites
+Install docker. Thats it.
 
 
 
 ### Installation
 
-TODO: add installation instructions
+Run the container:
+```bash
+sudo docker run -p 8080:8080 hilkopterbob/packagelock
+```
 
 <!-- USAGE EXAMPLES -->
 ## Usage
