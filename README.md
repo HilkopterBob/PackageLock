@@ -41,6 +41,7 @@
 <h3 align="center">PackageLock</h3>
 
   <p align="center">
+    Leaning Project!
     PackageLock aims to be the distro-agnostic 🔋-included one-stop Solution for patchmanagement on linux systems.
     <br />
     <a href="https://github.com/HilkopterBob/PackageLock"><strong>Explore the docs (COMING SOON!) »</strong></a>
@@ -130,6 +131,15 @@ TODO: explain usage
 - [ ] backend-api to manage Agents & Hosts
 - [ ] frontend to visualize backend data
 - [ ] installable agent as background daemon
+- [ ] config management
+- [ ] TLS Encryption
+- [ ] Secured API
+- [ ] Best Practice based Package Layout
+- [ ] Check Vars and Func-Names for naming convention
+- [ ] persistent storage
+- [ ] implement interfaces for external functions for easier mocking in tests
+
+
 
 TODO: create Issue template:
 See the [open issues](https://github.com/HilkopterBob/PackageLock/issues) for a full list of proposed features (and known issues).
