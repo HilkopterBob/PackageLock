@@ -19,7 +19,7 @@ jobs:
           goarch: amd64
       - uses: mr-smithers-excellent/docker-build-push@v2
         with:
-          image: PackageLock/image
+          image: hilkopterbob/image
           tag: latest
           registry: hub.docker.com
           dockerfile: Dockerfile
