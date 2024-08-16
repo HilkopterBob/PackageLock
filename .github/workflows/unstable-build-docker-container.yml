@@ -2,7 +2,7 @@ name: ci
 
 on:
   push:
-    branches: ["master"]
+    branches: ["devel"]
 
 jobs:
   docker:
@@ -19,4 +19,4 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           push: true
-          tags: hilkopterbob/packagelock:latest
+          tags: hilkopterbob/packagelock-unstable:latest
