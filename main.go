@@ -15,12 +15,20 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Data structs
+// Linker Injections
+// Version injection with Docker Build & ldflags
+// Do not modify, init or change in code!
+var AppVersion string
 
 // TODO: support for multiple network adapters.
 
 func main() {
 	Config := config.StartViper(viper.New())
+
+	if AppVersion != "" {
+		Config.SetDefault("general.app-version", AppVersion)
+	}
+
 	fmt.Println(Config.AllSettings())
 
 	// Channel to signal the restart
