@@ -1,4 +1,4 @@
-name: ci
+name: unstable-docker-build
 
 on:
   push:
