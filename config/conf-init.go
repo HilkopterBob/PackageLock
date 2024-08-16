@@ -20,6 +20,7 @@ type ConfigProvider interface {
 	ReadConfig(in io.Reader) error
 	AllSettings() map[string]any
 	GetString(string string) string
+	SetDefault(key string, value any)
 }
 
 // TODO: How to test?
