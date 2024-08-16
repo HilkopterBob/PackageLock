@@ -2,7 +2,6 @@ name: unstable-docker-build
 
 on:
   push:
-    branches: ["devel"]
 
 jobs:
   docker:
@@ -19,4 +18,4 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           push: true
-          tags: hilkopterbob/packagelock-unstable:latest
+          tags: hilkopterbob/packagelock-unstable:${{ env.BRANCH }}
