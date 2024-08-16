@@ -1,8 +1,7 @@
-name: docker-build
+name: unstable-docker-build
 
 on:
-  release:
-    types: [published]
+  push:
 
 jobs:
   docker:
@@ -19,6 +18,4 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           push: true
-          tags: hilkopterbob/packagelock:latest
-          build-args: |
-            APP_VERSION=${{ github.event.release.tag_name }}
+          tags: hilkopterbob/packagelock:unstable-${{ github.head_ref || github.ref_name }}
