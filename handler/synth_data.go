@@ -13,3 +13,8 @@ var Agents = []structs.Agent{
 	{Agent_name: "Agent Host2", Agent_secret: "11:11:11:12", Host_ID: 2, Agent_ID: 2},
 	{Agent_name: "Agent Host3", Agent_secret: "11:11:11:13", Host_ID: 3, Agent_ID: 3},
 }
+
+var Users = []structs.User{
+	{Username: "JohnDoe", Password: "password123", UserID: "12345", APIToken: []string{"token1", "token2", "token3"}},
+	{Username: "JaneDoe", Password: "password456", UserID: "67890", APIToken: []string{"token4", "token5", "token6"}},
+}

@@ -1,11 +1,11 @@
 general:
   debug: true
-  production: false
+  production: true
 network:
   forcehttp: true
   fqdn: 0.0.0.0
   port: 8080
   ssl:
     allowselfsigned: true
-    certificatepath: /etc/packagelock/ssl/cert.pem
-    privatekeypath: /etc/packagelock/ssl/privkey.pem
+    certificatepath: ./certs/testing.crt
+    privatekeypath: ./certs/testing.key

@@ -23,14 +23,14 @@ var AppVersion string
 
 func main() {
 	// Start Viper for config management
-	Config := config.StartViper(viper.New())
+	config.Config = config.StartViper(viper.New())
 
 	// If AppVersion is injected, set it in the configuration
 	if AppVersion != "" {
-		Config.SetDefault("general.app-version", AppVersion)
+		config.Config.SetDefault("general.app-version", AppVersion)
 	}
 
-	fmt.Println(Config.AllSettings())
+	fmt.Println(config.Config.AllSettings())
 
 	// Channel to signal the restart
 	restartChan := make(chan struct{})
@@ -41,11 +41,11 @@ func main() {
 	go func() {
 		for {
 			// Add Fiber routes
-			router := server.AddRoutes()
+			router := server.AddRoutes(config.Config)
 
 			// Fiber does not use the standard http.Server
 			// Setup server address from config
-			serverAddr := Config.GetString("network.fqdn") + ":" + Config.GetString("network.port")
+			serverAddr := config.Config.GetString("network.fqdn") + ":" + config.Config.GetString("network.port")
 
 			// Fiber specific server start
 			go func() {
@@ -86,12 +86,12 @@ func main() {
 	}()
 
 	// Watch for configuration changes
-	Config.OnConfigChange(func(e fsnotify.Event) {
+	config.Config.OnConfigChange(func(e fsnotify.Event) {
 		fmt.Println("Config file changed:", e.Name)
 		fmt.Println("Restarting to apply changes...")
 		restartChan <- struct{}{} // Send signal to restart the server
 	})
-	Config.WatchConfig()
+	config.Config.WatchConfig()
 
 	// Block until quit signal is received
 	<-quitChan
