@@ -1,50 +1,116 @@
 package server
 
 import (
+	"log"
+	"os"
+	"packagelock/config"
 	"packagelock/handler"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/gofiber/template/html/v2"
+
+	jwtware "github.com/gofiber/contrib/jwt"
+	"github.com/golang-jwt/jwt/v5"
 )
 
-// 'Routes' holds the gin-Engine Pointer.
+// Routes holds the Fiber app instance.
 type Routes struct {
-	Router *gin.Engine
+	Router *fiber.App
 }
 
-func (router Routes) addAgentHandler(rg *gin.RouterGroup) {
-	AgentGroup := rg.Group("/agent")
+// addAgentHandler sets up agent-related routes in Fiber.
+func (r Routes) addAgentHandler(group fiber.Router) {
+	AgentGroup := group.Group("/agent")
 
-	AgentGroup.GET("/:id", handler.GetAgentByID)
-	AgentGroup.GET("/:id/host", handler.GetHostByAgentID)
-	AgentGroup.POST("/register", handler.RegisterAgent)
+	AgentGroup.Get("/:id", handler.GetAgentByID)
+	AgentGroup.Get("/:id/host", handler.GetHostByAgentID)
+	AgentGroup.Post("/register", handler.RegisterAgent)
 }
 
-func (router Routes) addGeneralHandler(rg *gin.RouterGroup) {
-	GeneralGroup := rg.Group("/general")
+// addGeneralHandler sets up general-related routes in Fiber.
+func (r Routes) addGeneralHandler(group fiber.Router) {
+	GeneralGroup := group.Group("/general")
 
-	GeneralGroup.GET("/hosts", handler.GetHosts)
-	GeneralGroup.GET("/agents", handler.GetAgents)
+	GeneralGroup.Get("/hosts", handler.GetHosts)
+	GeneralGroup.Get("/agents", handler.GetAgents)
 }
 
-func (router Routes) addHostHandler(rg *gin.RouterGroup) {
-	HostGroup := rg.Group("/host")
+// addHostHandler sets up host-related routes in Fiber.
+func (r Routes) addHostHandler(group fiber.Router) {
+	HostGroup := group.Group("/host")
 
-	HostGroup.POST("/register", handler.RegisterHost)
+	HostGroup.Post("/register", handler.RegisterHost)
 }
 
-// AddRoutes adds all handler groups to the current router.
-// Its Exported, used in main() and returns a Router typed Routes.
-// AddRoutes calls all add_handlergroupname_Handler functions.
-func AddRoutes() Routes {
+func (r Routes) addLoginHandler(group fiber.Router) {
+	LoginGroup := group.Group("/auth")
+
+	LoginGroup.Post("/login", handler.LoginHandler)
+}
+
+// AddRoutes adds all handler groups to the current Fiber app.
+// It's exported and used in main() to return the configured Router.
+func AddRoutes(Config config.ConfigProvider) Routes {
+	// Initialize template engine
+	engine := html.New("./templates", ".html")
+
+	// Initialize Fiber app
 	router := Routes{
-		Router: gin.Default(),
+		Router: fiber.New(fiber.Config{
+			Views: engine,
+		}),
 	}
 
-	v1 := router.Router.Group("/v1")
+	router.addLoginHandler(router.Router)
 
-	router.addGeneralHandler(v1)
-	router.addAgentHandler(v1)
-	router.addHostHandler(v1)
+	// Use JWT if in production
+	if Config.Get("general.production") == true {
+		// Read the private key for JWT
+		keyData, err := os.ReadFile(Config.GetString("network.ssl.privatekeypath"))
+		if err != nil {
+			log.Fatal(err)
+		}
+		privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(keyData)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// JWT Middleware to protect specific routes
+		jwtMiddleware := jwtware.New(jwtware.Config{
+			SigningKey: jwtware.SigningKey{Key: privateKey},
+		})
+
+		// Apply JWT protection to all routes in the "/v1" group
+		v1 := router.Router.Group("/v1", jwtMiddleware)
+
+		// Add route handlers to the protected group
+		router.addGeneralHandler(v1)
+		router.addAgentHandler(v1)
+		router.addHostHandler(v1)
+	} else {
+		// Create the versioned route group without JWT protection (for non-production environments)
+		v1 := router.Router.Group("/v1")
+
+		// Add route handlers without JWT protection
+		router.addGeneralHandler(v1)
+		router.addAgentHandler(v1)
+		router.addHostHandler(v1)
+	}
+
+	// Middleware to recover from panics
+	router.Router.Use(recover.New())
+
+	// Add 404 handler
+	router.Router.Use(func(c *fiber.Ctx) error {
+		return c.Status(fiber.StatusNotFound).Render("404", fiber.Map{})
+	})
 
 	return router
+}
+
+// ListenAndServeTLS starts the Fiber server using TLS (HTTPS)
+func ListenAndServeTLS(router *fiber.App, certFile, keyFile, addr string) error {
+	// Start HTTPS server using the provided certificate and key files
+	return router.ListenTLS(addr, certFile, keyFile)
 }
