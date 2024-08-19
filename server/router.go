@@ -1,11 +1,17 @@
 package server
 
 import (
+	"log"
+	"os"
+	"packagelock/config"
 	"packagelock/handler"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/template/html/v2"
+
+	jwtware "github.com/gofiber/contrib/jwt"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // Routes holds the Fiber app instance.
@@ -37,9 +43,15 @@ func (r Routes) addHostHandler(group fiber.Router) {
 	HostGroup.Post("/register", handler.RegisterHost)
 }
 
+func (r Routes) addLoginHandler(group fiber.Router) {
+	LoginGroup := group.Group("/auth")
+
+	LoginGroup.Post("/login", handler.LoginHandler)
+}
+
 // AddRoutes adds all handler groups to the current Fiber app.
 // It's exported and used in main() to return the configured Router.
-func AddRoutes() Routes {
+func AddRoutes(Config config.ConfigProvider) Routes {
 	// Initialize template engine
 	engine := html.New("./templates", ".html")
 
@@ -50,16 +62,46 @@ func AddRoutes() Routes {
 		}),
 	}
 
+	router.addLoginHandler(router.Router)
+
+	// Use JWT if in production
+	if Config.Get("general.production") == true {
+		// Read the private key for JWT
+		keyData, err := os.ReadFile(Config.GetString("network.ssl.privatekeypath"))
+		if err != nil {
+			log.Fatal(err)
+		}
+		privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(keyData)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// JWT Middleware to protect specific routes
+		jwtMiddleware := jwtware.New(jwtware.Config{
+			SigningKey: jwtware.SigningKey{Key: privateKey},
+		})
+
+		// Apply JWT protection to all routes in the "/v1" group
+		v1 := router.Router.Group("/v1", jwtMiddleware)
+
+		// Add route handlers to the protected group
+		router.addGeneralHandler(v1)
+		router.addAgentHandler(v1)
+		router.addHostHandler(v1)
+	} else {
+		// Create the versioned route group without JWT protection (for non-production environments)
+		v1 := router.Router.Group("/v1")
+
+		// Add route handlers without JWT protection
+		router.addGeneralHandler(v1)
+		router.addAgentHandler(v1)
+		router.addHostHandler(v1)
+	}
+
+	// Middleware to recover from panics
 	router.Router.Use(recover.New())
 
-	// Create the versioned route group
-	v1 := router.Router.Group("/v1")
-
-	// Add all route handlers
-	router.addGeneralHandler(v1)
-	router.addAgentHandler(v1)
-	router.addHostHandler(v1)
-
+	// Add 404 handler
 	router.Router.Use(func(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).Render("404", fiber.Map{})
 	})

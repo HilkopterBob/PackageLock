@@ -9,6 +9,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+var Config ConfigProvider
+
 type ConfigProvider interface {
 	SetConfigName(name string)
 	SetConfigType(fileext string)
@@ -21,6 +23,7 @@ type ConfigProvider interface {
 	AllSettings() map[string]any
 	GetString(string string) string
 	SetDefault(key string, value any)
+	Get(key string) any
 }
 
 // TODO: How to test?

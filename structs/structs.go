@@ -30,3 +30,10 @@ type Agent struct {
 	Host_ID      int
 	Agent_ID     int
 }
+
+type User struct {
+	Username string
+	Password string
+	UserID   string
+	APIToken []string
+}
