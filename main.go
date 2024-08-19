@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"os"
 	"os/signal"
 	"packagelock/config"
@@ -23,8 +22,10 @@ var AppVersion string
 // TODO: support for multiple network adapters.
 
 func main() {
+	// Start Viper for config management
 	Config := config.StartViper(viper.New())
 
+	// If AppVersion is injected, set it in the configuration
 	if AppVersion != "" {
 		Config.SetDefault("general.app-version", AppVersion)
 	}
@@ -39,16 +40,17 @@ func main() {
 	// Start the server in a goroutine
 	go func() {
 		for {
+			// Add Fiber routes
 			router := server.AddRoutes()
-			serverAddr := Config.GetString("network.fqdn") + ":" + Config.GetString("network.port")
-			srv := &http.Server{
-				Addr:    serverAddr,
-				Handler: router.Router.Handler(),
-			}
 
+			// Fiber does not use the standard http.Server
+			// Setup server address from config
+			serverAddr := Config.GetString("network.fqdn") + ":" + Config.GetString("network.port")
+
+			// Fiber specific server start
 			go func() {
-				fmt.Printf("Starting server at %s...\n", serverAddr)
-				if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				fmt.Printf("Starting Fiber server at %s...\n", serverAddr)
+				if err := router.Router.Listen(serverAddr); err != nil {
 					fmt.Printf("Server error: %s\n", err)
 				}
 			}()
@@ -56,22 +58,24 @@ func main() {
 			// Wait for either a restart signal or termination signal
 			select {
 			case <-restartChan:
-				fmt.Println("Restarting server...")
+				fmt.Println("Restarting Fiber server...")
 
-				// Gracefully shutdown the server
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				// Gracefully shutdown the Fiber server
+				_, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
-				if err := srv.Shutdown(ctx); err != nil {
+				if err := router.Router.Shutdown(); err != nil {
 					fmt.Printf("Server shutdown failed: %v\n", err)
 				} else {
 					fmt.Println("Server stopped.")
 				}
 
 			case <-quitChan:
-				fmt.Println("Shutting down server...")
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				fmt.Println("Shutting down Fiber server...")
+
+				// Gracefully shutdown on quit signal
+				_, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
-				if err := srv.Shutdown(ctx); err != nil {
+				if err := router.Router.Shutdown(); err != nil {
 					fmt.Printf("Server shutdown failed: %v\n", err)
 				} else {
 					fmt.Println("Server stopped gracefully.")

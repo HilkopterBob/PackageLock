@@ -1,61 +1,70 @@
 package handler
 
 import (
-	"net/http"
 	"packagelock/structs"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 )
 
 // GetAgentByID filters a slice of Agents for a matching Agent.Agent_ID.
-// It returns IndentedJSON with: http.StatusOK or http.StatusNotFound.
-func GetAgentByID(c *gin.Context) {
-	id := c.Param("id")
+// It returns a JSON response with fiber.StatusOK or fiber.StatusNotFound.
+func GetAgentByID(c *fiber.Ctx) error {
+	id := c.Params("id")
 
 	for _, a := range Agents {
 		if strconv.Itoa(a.Host_ID) == id {
-			c.IndentedJSON(http.StatusOK, a)
-			return
+			return c.Status(fiber.StatusOK).JSON(a)
 		}
 	}
-	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "no agent under that id"})
+	return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "no agent under that id"})
 }
 
-// POST Functions
-func RegisterAgent(c *gin.Context) {
+// RegisterAgent handles POST requests to register a new agent.
+func RegisterAgent(c *fiber.Ctx) error {
 	var newAgent structs.Agent
 
-	if err := c.BindJSON(&newAgent); err != nil {
+	// Parse the JSON request body into newAgent
+	if err := c.BodyParser(&newAgent); err != nil {
 		// TODO: Add logs
-		// TODO: Add errorhandling
-		return
+		// TODO: Add error handling
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Cannot parse JSON",
+		})
 	}
 
+	// Add new agent to the Agents slice
 	Agents = append(Agents, newAgent)
-	c.IndentedJSON(http.StatusCreated, newAgent)
+
+	// Respond with the newly created agent
+	return c.Status(fiber.StatusCreated).JSON(newAgent)
 }
 
-func GetHostByAgentID(c *gin.Context) {
-	var agent_by_id structs.Agent
+// GetHostByAgentID finds the host for a given agent ID.
+func GetHostByAgentID(c *fiber.Ctx) error {
+	var agentByID structs.Agent
 
-	// gets the value from /agent/:id/host
-	id := c.Param("id")
+	// Get the value from /agent/:id/host
+	id := c.Params("id")
 
-	// finds the agent by the URL-ID
+	// Find the agent by the URL-ID
 	for _, a := range Agents {
 		if strconv.Itoa(a.Host_ID) == id {
-			// c.IndentedJSON(http.StatusOK, a)
-			agent_by_id = a
+			agentByID = a
+			break
 		}
 	}
 
-	// finds host with same id as agent
+	if agentByID.Agent_ID == 0 {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "no agent under that id"})
+	}
+
+	// Find the host with the same id as the agent
 	for _, host := range Hosts {
-		if host.ID == agent_by_id.Agent_ID {
-			c.IndentedJSON(http.StatusOK, host)
-			return
+		if host.ID == agentByID.Agent_ID {
+			return c.Status(fiber.StatusOK).JSON(host)
 		}
 	}
-	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "no agent under that id"})
+
+	return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "no host found for that agent"})
 }
