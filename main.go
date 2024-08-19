@@ -49,9 +49,18 @@ func main() {
 
 			// Fiber specific server start
 			go func() {
-				fmt.Printf("Starting Fiber server at %s...\n", serverAddr)
-				if err := router.Router.Listen(serverAddr); err != nil {
-					fmt.Printf("Server error: %s\n", err)
+				fmt.Printf("Starting Fiber HTTPS server at https://%s...\n", serverAddr)
+
+				// start ssl session if ssl:true is set in config file, else start http
+				if config.Config.Get("network.ssl") == true {
+					if err := server.ListenAndServeTLS(router.Router, config.Config.GetString("network.ssl-config.certificatepath"), config.Config.GetString("network.ssl-config.privatekeypath"), serverAddr); err != nil {
+						fmt.Printf("Server error: %s\n", err)
+					}
+				} else {
+					fmt.Printf("Starting Fiber server at %s...\n", serverAddr)
+					if err := router.Router.Listen(serverAddr); err != nil {
+						fmt.Printf("Server error: %s\n", err)
+					}
 				}
 			}()
 

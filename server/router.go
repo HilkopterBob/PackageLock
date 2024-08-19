@@ -108,3 +108,9 @@ func AddRoutes(Config config.ConfigProvider) Routes {
 
 	return router
 }
+
+// ListenAndServeTLS starts the Fiber server using TLS (HTTPS)
+func ListenAndServeTLS(router *fiber.App, certFile, keyFile, addr string) error {
+	// Start HTTPS server using the provided certificate and key files
+	return router.ListenTLS(addr, certFile, keyFile)
+}

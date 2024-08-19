@@ -133,7 +133,6 @@ TODO: explain usage
 - [ ] installable agent as background daemon
 - [ ] config management
 - [ ] TLS Encryption
-- [ ] Secured API
 - [ ] Best Practice based Package Layout
 - [ ] Check Vars and Func-Names for naming convention
 - [ ] persistent storage
