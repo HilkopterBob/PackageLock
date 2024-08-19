@@ -1,15 +1,15 @@
 package handler
 
 import (
-	"net/http"
-
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 )
 
-func GetHosts(c *gin.Context) {
-	c.IndentedJSON(http.StatusOK, Hosts)
+// GetHosts responds with a list of all hosts.
+func GetHosts(c *fiber.Ctx) error {
+	return c.Status(fiber.StatusOK).JSON(Hosts)
 }
 
-func GetAgents(c *gin.Context) {
-	c.IndentedJSON(http.StatusOK, Agents)
+// GetAgents responds with a list of all agents.
+func GetAgents(c *fiber.Ctx) error {
+	return c.Status(fiber.StatusOK).JSON(Agents)
 }

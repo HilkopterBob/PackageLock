@@ -1,21 +1,27 @@
 package handler
 
 import (
-	"net/http"
 	"packagelock/structs"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 )
 
-func RegisterHost(c *gin.Context) {
+// RegisterHost handles the registration of a new host.
+func RegisterHost(c *fiber.Ctx) error {
 	var newHost structs.Host
 
-	if err := c.BindJSON(&newHost); err != nil {
+	// Parse the JSON request body into newHost
+	if err := c.BodyParser(&newHost); err != nil {
 		// TODO: Add logs
-		// TODO: Add errorhandling
-		return
+		// TODO: Add error handling
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Cannot parse JSON",
+		})
 	}
 
+	// Append new host to the Hosts slice
 	Hosts = append(Hosts, newHost)
-	c.IndentedJSON(http.StatusCreated, newHost)
+
+	// Respond with the newly created host
+	return c.Status(fiber.StatusCreated).JSON(newHost)
 }

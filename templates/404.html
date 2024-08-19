@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 Not Found</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body,
+    html {
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: white;
+      font-family: 'Arial', sans-serif;
+    }
+
+    .center-box {
+      position: absolute;
+      text-align: center;
+      padding: 20px;
+      background: white;
+      /* Already solid */
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      z-index: 10;
+      /* Ensure it's above the canvas */
+    }
+
+
+    .center-box h1 {
+      font-size: 2.5rem;
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    .center-box a {
+      text-decoration: none;
+      color: #007bff;
+      font-size: 1.2rem;
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="center-box" id="box">
+    <h1>404 - Page not found 😢</h1>
+    <p>Read the <a href="https://github.com/HilkopterBob/PackageLock" target="_blank">PackageLock Docs! 🚀</a></p>
+  </div>
+
+  <canvas id="mesh"></canvas>
+
+  <script>
+    const canvas = document.getElementById('mesh');
+    const ctx = canvas.getContext('2d');
+    let particlesArray = [];
+    let mouse = {
+      x: null,
+      y: null,
+      radius: 150
+    };
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const box = document.getElementById('box');
+    const boxRect = box.getBoundingClientRect(); // To detect the central box position
+
+    window.addEventListener('mousemove', (event) => {
+      mouse.x = event.x;
+      mouse.y = event.y;
+    });
+
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      initParticles();
+    });
+
+    class Particle {
+      constructor(x, y, size) {
+        this.x = x;
+        this.y = y;
+        this.size = size;
+        this.baseX = this.x;
+        this.baseY = this.y;
+        this.velocityX = (Math.random() * 2) - 1; // Random horizontal velocity
+        this.velocityY = (Math.random() * 2) - 1; // Random vertical velocity
+      }
+
+      draw() {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      update() {
+        // Move the particle
+        this.x += this.velocityX;
+        this.y += this.velocityY;
+
+        // Bounce from edges
+        if (this.x < 0 || this.x > canvas.width) {
+          this.velocityX *= -1;
+        }
+        if (this.y < 0 || this.y > canvas.height) {
+          this.velocityY *= -1;
+        }
+      }
+    }
+
+    function initParticles() {
+      particlesArray = [];
+      for (let i = 0; i < 300; i++) {
+        let size = (Math.random() * 3) + 1;
+        let x = Math.random() * canvas.width;
+        let y = Math.random() * canvas.height;
+        particlesArray.push(new Particle(x, y, size));
+      }
+    }
+
+    function animateParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < particlesArray.length; i++) {
+        particlesArray[i].draw();
+        particlesArray[i].update();
+      }
+      connectParticles();
+      requestAnimationFrame(animateParticles);
+    }
+
+    function connectParticles() {
+      let maxDistance = 25;
+      for (let a = 0; a < particlesArray.length; a++) {
+        for (let b = a + 1; b < particlesArray.length; b++) {
+          let dx = particlesArray[a].x - particlesArray[b].x;
+          let dy = particlesArray[a].y - particlesArray[b].y;
+          let distance = Math.sqrt(dx * dx + dy * dy);
+
+          if (distance < maxDistance) {
+            let opacity = 1 - distance / maxDistance;
+            ctx.strokeStyle = `rgba(0, 0, 0, ${opacity})`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(particlesArray[a].x, particlesArray[a].y);
+            ctx.lineTo(particlesArray[b].x, particlesArray[b].y);
+            ctx.stroke();
+            ctx.closePath();
+          }
+        }
+
+        // Connect particles to the mouse if it's not inside the central box
+        if (mouse.x && mouse.y && !isMouseInsideBox()) {
+          let dxMouse = particlesArray[a].x - mouse.x;
+          let dyMouse = particlesArray[a].y - mouse.y;
+          let distanceMouse = Math.sqrt(dxMouse * dxMouse + dyMouse * dyMouse);
+
+          if (distanceMouse < mouse.radius) {
+            let opacityMouse = 1 - distanceMouse / mouse.radius;
+            ctx.strokeStyle = `rgba(0, 0, 0, ${opacityMouse})`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(particlesArray[a].x, particlesArray[a].y);
+            ctx.lineTo(mouse.x, mouse.y);
+            ctx.stroke();
+            ctx.closePath();
+          }
+        }
+      }
+    }
+
+    function isMouseInsideBox() {
+      // Check if the mouse is inside the central box
+      return mouse.x >= boxRect.left && mouse.x <= boxRect.right &&
+        mouse.y >= boxRect.top && mouse.y <= boxRect.bottom;
+    }
+
+    initParticles();
+    animateParticles();
+  </script>
+</body>
+
+</html>
