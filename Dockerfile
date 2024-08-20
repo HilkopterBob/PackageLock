@@ -28,4 +28,4 @@ RUN \
 EXPOSE 8080
 
 # Run
-CMD ["/app/packagelock"]
+CMD ["/app/packagelock start"]
