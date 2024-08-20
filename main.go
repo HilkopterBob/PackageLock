@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"packagelock/certs"
 	"packagelock/config"
 	"packagelock/server"
 	"syscall"
@@ -28,6 +29,15 @@ func main() {
 	// If AppVersion is injected, set it in the configuration
 	if AppVersion != "" {
 		config.Config.SetDefault("general.app-version", AppVersion)
+	}
+
+	if _, err := os.Stat(config.Config.GetString("network.ssl-config.certificatepath")); os.IsNotExist(err) {
+		fmt.Println("Certificate files missing, creating new self-signed.")
+		err := certs.CreateSelfSignedCert(config.Config.GetString("network.ssl-config.certificatepath"), config.Config.GetString("network.ssl-config.privatekeypath"))
+		if err != nil {
+			fmt.Printf("Error creating self-signed certificate: %v\n", err)
+			return
+		}
 	}
 
 	fmt.Println(config.Config.AllSettings())
