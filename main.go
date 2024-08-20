@@ -12,18 +12,42 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-// Linker Injections
-// Version injection with Docker Build & ldflags
-// Do not modify, init or change in code!
-var AppVersion string
+var (
+	restartChan = make(chan struct{})
+	quitChan    = make(chan os.Signal, 1)
+	AppVersion  string // Version injected with ldflags
+)
 
-// TODO: support for multiple network adapters.
+// Root command using Cobra
+var rootCmd = &cobra.Command{
+	Use:   "packagelock",
+	Short: "Packagelock CLI tool",
+	Long:  `Packagelock CLI manages the server and other operations.`,
+}
 
-func main() {
-	// Start Viper for config management
+// Start command to run the server
+var startCmd = &cobra.Command{
+	Use:   "start",
+	Short: "Start the server",
+	Run: func(cmd *cobra.Command, args []string) {
+		startServer()
+	},
+}
+
+func init() {
+	// Add commands to rootCmd
+	rootCmd.AddCommand(startCmd)
+
+	// Initialize Viper config
+	cobra.OnInitialize(initConfig)
+}
+
+// initConfig initializes Viper and configures the application
+func initConfig() {
 	config.Config = config.StartViper(viper.New())
 
 	// If AppVersion is injected, set it in the configuration
@@ -31,39 +55,42 @@ func main() {
 		config.Config.SetDefault("general.app-version", AppVersion)
 	}
 
+	// Check and create self-signed certificates if missing
 	if _, err := os.Stat(config.Config.GetString("network.ssl-config.certificatepath")); os.IsNotExist(err) {
 		fmt.Println("Certificate files missing, creating new self-signed.")
-		err := certs.CreateSelfSignedCert(config.Config.GetString("network.ssl-config.certificatepath"), config.Config.GetString("network.ssl-config.privatekeypath"))
+		err := certs.CreateSelfSignedCert(
+			config.Config.GetString("network.ssl-config.certificatepath"),
+			config.Config.GetString("network.ssl-config.privatekeypath"))
 		if err != nil {
 			fmt.Printf("Error creating self-signed certificate: %v\n", err)
-			return
+			os.Exit(1)
 		}
 	}
+}
 
+// startServer starts the Fiber server with appropriate configuration
+func startServer() {
 	fmt.Println(config.Config.AllSettings())
 
-	// Channel to signal the restart
-	restartChan := make(chan struct{})
-	quitChan := make(chan os.Signal, 1)
 	signal.Notify(quitChan, os.Interrupt, syscall.SIGTERM)
 
 	// Start the server in a goroutine
 	go func() {
 		for {
-			// Add Fiber routes
 			router := server.AddRoutes(config.Config)
 
-			// Fiber does not use the standard http.Server
 			// Setup server address from config
 			serverAddr := config.Config.GetString("network.fqdn") + ":" + config.Config.GetString("network.port")
 
-			// Fiber specific server start
+			// Start server based on SSL config
 			go func() {
-				fmt.Printf("Starting Fiber HTTPS server at https://%s...\n", serverAddr)
-
-				// start ssl session if ssl:true is set in config file, else start http
-				if config.Config.Get("network.ssl") == true {
-					if err := server.ListenAndServeTLS(router.Router, config.Config.GetString("network.ssl-config.certificatepath"), config.Config.GetString("network.ssl-config.privatekeypath"), serverAddr); err != nil {
+				if config.Config.GetBool("network.ssl") {
+					fmt.Printf("Starting Fiber HTTPS server at https://%s...\n", serverAddr)
+					if err := server.ListenAndServeTLS(
+						router.Router,
+						config.Config.GetString("network.ssl-config.certificatepath"),
+						config.Config.GetString("network.ssl-config.privatekeypath"),
+						serverAddr); err != nil {
 						fmt.Printf("Server error: %s\n", err)
 					}
 				} else {
@@ -74,12 +101,10 @@ func main() {
 				}
 			}()
 
-			// Wait for either a restart signal or termination signal
+			// Handle restart or quit signals
 			select {
 			case <-restartChan:
 				fmt.Println("Restarting Fiber server...")
-
-				// Gracefully shutdown the Fiber server
 				_, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
 				if err := router.Router.Shutdown(); err != nil {
@@ -90,8 +115,6 @@ func main() {
 
 			case <-quitChan:
 				fmt.Println("Shutting down Fiber server...")
-
-				// Gracefully shutdown on quit signal
 				_, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
 				if err := router.Router.Shutdown(); err != nil {
@@ -104,15 +127,23 @@ func main() {
 		}
 	}()
 
-	// Watch for configuration changes
+	// Watch for config changes
 	config.Config.OnConfigChange(func(e fsnotify.Event) {
 		fmt.Println("Config file changed:", e.Name)
 		fmt.Println("Restarting to apply changes...")
-		restartChan <- struct{}{} // Send signal to restart the server
+		restartChan <- struct{}{}
 	})
 	config.Config.WatchConfig()
 
 	// Block until quit signal is received
 	<-quitChan
 	fmt.Println("Main process exiting.")
+}
+
+func main() {
+	// Execute the Cobra root command
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }
