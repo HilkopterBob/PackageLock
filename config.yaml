@@ -2,11 +2,11 @@ general:
   debug: true
   production: false
 network:
-  forcehttp: true
   fqdn: 0.0.0.0
   port: 8080
   ssl: true
   ssl-config:
+    redirecthttp: true
     allowselfsigned: true
     certificatepath: ./certs/testing.crt
     privatekeypath: ./certs/testing.key
