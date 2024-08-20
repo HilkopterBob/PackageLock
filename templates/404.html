@@ -157,7 +157,7 @@
           let distance = Math.sqrt(dx * dx + dy * dy);
 
           if (distance < maxDistance) {
-            let opacity = 1 - distance / maxDistance;
+            let opacity = 1 - (distance / maxDistance);
             ctx.strokeStyle = `rgba(0, 0, 0, ${opacity})`;
             ctx.lineWidth = 1;
             ctx.beginPath();

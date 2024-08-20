@@ -24,6 +24,7 @@ type ConfigProvider interface {
 	GetString(string string) string
 	SetDefault(key string, value any)
 	Get(key string) any
+	GetBool(key string) bool
 }
 
 // TODO: How to test?
