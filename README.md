@@ -140,8 +140,9 @@ TODO: explain usage
 - [ ] systemd service start/stop/enable/disable
 - [ ] copy app file (.deb/rpm/binary) via SFTP to host and start stop
 - [ ] binary self-Update
-- [ ] agent can run docker containers
-- [ ] agent fetches running docker containers, updates, restarts etc
+- [ ] agent can run docker/podman containers
+- [ ] agent fetches running docker/podman containers, updates, restarts etc
+
 
 
 TODO: create Issue template:
