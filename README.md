@@ -139,6 +139,9 @@ TODO: explain usage
 - [ ] implement interfaces for external functions for easier mocking in tests
 - [ ] systemd service start/stop/enable/disable
 - [ ] copy app file (.deb/rpm/binary) via SFTP to host and start stop
+- [ ] binary self-Update
+- [ ] agent can run docker containers
+- [ ] agent fetches running docker containers, updates, restarts etc
 
 
 TODO: create Issue template:
