@@ -142,6 +142,8 @@ TODO: explain usage
 - [ ] binary self-Update
 - [ ] agent can run docker/podman containers
 - [ ] agent fetches running docker/podman containers, updates, restarts etc
+- [ ] user management & SSH keys
+- [ ] system definition in mpackagelock file for easy recovery & scaling
 
 
 
