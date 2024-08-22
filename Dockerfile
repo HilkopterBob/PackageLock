@@ -18,7 +18,7 @@ RUN go mod download
 # Build
 ARG APP_VERSION="v0.1.0+hotfixes"
 RUN \
-  CGO_ENABLED=0 GOOS=linux go build -ldflags "-X 'main.AppVersion=$APP_VERSION'" -o /app/packagelock
+  CGO_ENABLED=0 GOOS=linux go build -ldflags "-X 'main.AppVersion=$APP_VERSION'" -o /packagelock
 
 # Optional:
 # To bind to a TCP port, runtime parameters must be supplied to the docker command.
@@ -28,4 +28,5 @@ RUN \
 EXPOSE 8080
 
 # Run
-CMD ["/app/packagelock start"]
+CMD ["packagelock start"]
+
