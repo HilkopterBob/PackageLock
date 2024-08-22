@@ -137,6 +137,13 @@ TODO: explain usage
 - [ ] Check Vars and Func-Names for naming convention
 - [ ] persistent storage
 - [ ] implement interfaces for external functions for easier mocking in tests
+- [ ] systemd service start/stop/enable/disable
+- [ ] copy app file (.deb/rpm/binary) via SFTP to host and start stop
+- [ ] binary self-Update
+- [ ] agent can run docker/podman containers
+- [ ] agent fetches running docker/podman containers, updates, restarts etc
+- [ ] user management & SSH keys
+- [ ] system definition in mpackagelock file for easy recovery & scaling
 
 
 
