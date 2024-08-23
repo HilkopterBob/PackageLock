@@ -2,3 +2,4 @@ certs/**
 !certs/*.go
 config.yaml
 config.yml
+packagelock.pid
