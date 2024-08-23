@@ -29,8 +29,9 @@ type ConfigProvider interface {
 
 // TODO: How to test?
 func StartViper(config ConfigProvider) ConfigProvider {
-	config.SetConfigName("config")            // name of config file (without extension)
-	config.SetConfigType("yaml")              // REQUIRED if the config file does not have the extension in the name
+	config.SetConfigName("config") // name of config file (without extension)
+	config.SetConfigType("yaml")   // REQUIRED if the config file does not have the extension in the name
+	config.AddConfigPath("/app/data")
 	config.AddConfigPath("/etc/packagelock/") // path to look for the config file in  etc/
 	config.AddConfigPath(".")                 // optionally look for config in the working directory
 
