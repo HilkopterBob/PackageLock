@@ -8,6 +8,7 @@ import (
 	"packagelock/certs"
 	"packagelock/config"
 	"packagelock/server"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -35,6 +36,22 @@ var startCmd = &cobra.Command{
 	Short: "Start the server",
 	Run: func(cmd *cobra.Command, args []string) {
 		startServer()
+	},
+}
+
+var restartCmd = &cobra.Command{
+	Use:   "restart",
+	Short: "Restart the running server",
+	Run: func(cmd *cobra.Command, args []string) {
+		restartServer()
+	},
+}
+
+var stopCmd = &cobra.Command{
+	Use:   "stop",
+	Short: "Stop the running server",
+	Run: func(cmd *cobra.Command, args []string) {
+		stopServer()
 	},
 }
 
@@ -78,6 +95,8 @@ func init() {
 	// Add commands to rootCmd
 	rootCmd.AddCommand(startCmd)
 	rootCmd.AddCommand(generateCmd)
+	rootCmd.AddCommand(restartCmd)
+	rootCmd.AddCommand(stopCmd)
 
 	// Initialize Viper config
 	cobra.OnInitialize(initConfig)
@@ -107,6 +126,13 @@ func initConfig() {
 
 // startServer starts the Fiber server with appropriate configuration
 func startServer() {
+	pid := os.Getpid()
+	err := os.WriteFile("packagelock.pid", []byte(strconv.Itoa(pid)), 0644)
+	if err != nil {
+		fmt.Printf("Failed to write PID file: %v\n", err)
+		return
+	}
+
 	fmt.Println(config.Config.AllSettings())
 
 	signal.Notify(quitChan, os.Interrupt, syscall.SIGTERM)
@@ -123,11 +149,12 @@ func startServer() {
 			go func() {
 				if config.Config.GetBool("network.ssl") {
 					fmt.Printf("Starting Fiber HTTPS server at https://%s...\n", serverAddr)
-					if err := server.ListenAndServeTLS(
+					err := server.ListenAndServeTLS(
 						router.Router,
 						config.Config.GetString("network.ssl-config.certificatepath"),
 						config.Config.GetString("network.ssl-config.privatekeypath"),
-						serverAddr); err != nil {
+						serverAddr)
+					if err != nil {
 						fmt.Printf("Server error: %s\n", err)
 					}
 				} else {
@@ -149,6 +176,7 @@ func startServer() {
 				} else {
 					fmt.Println("Server stopped.")
 				}
+				startServer()
 
 			case <-quitChan:
 				fmt.Println("Shutting down Fiber server...")
@@ -175,6 +203,44 @@ func startServer() {
 	// Block until quit signal is received
 	<-quitChan
 	fmt.Println("Main process exiting.")
+}
+
+func restartServer() {
+	stopServer()
+	fmt.Println("Restarting the Server...")
+	time.Sleep(5 * time.Second)
+	startServer()
+}
+
+func stopServer() {
+	// Read the PID from the file using os.ReadFile
+	data, err := os.ReadFile("packagelock.pid")
+	if err != nil {
+		fmt.Printf("Could not read PID file: %v\n", err)
+		return
+	}
+
+	pid, err := strconv.Atoi(string(data))
+	if err != nil {
+		fmt.Printf("Invalid PID found in file: %v\n", err)
+		return
+	}
+
+	// Send SIGTERM to the process
+	fmt.Printf("Stopping the server with PID: %d\n", pid)
+	err = syscall.Kill(pid, syscall.SIGTERM)
+	if err != nil {
+		fmt.Printf("Failed to stop the server: %v\n", err)
+	} else {
+		fmt.Println("Server stopped.")
+		// After successful stop, remove the PID file
+		err = os.Remove("packagelock.pid")
+		if err != nil {
+			fmt.Printf("Failed to remove PID file: %v\n", err)
+		} else {
+			fmt.Println("PID file removed successfully.")
+		}
+	}
 }
 
 func main() {
