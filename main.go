@@ -38,9 +38,46 @@ var startCmd = &cobra.Command{
 	},
 }
 
+// Generate command
+var generateCmd = &cobra.Command{
+	Use:       "generate [certs|config]",
+	Short:     "Generate certs or config files",
+	Long:      "Generate certificates or configuration files required by the application.",
+	Args:      cobra.MatchAll(cobra.ExactArgs(1), validGenerateArgs()), // Expect exactly one argument: either "certs" or "config"
+	ValidArgs: []string{"certs", "config"},                             // Restrict arguments to these options
+	Run: func(cmd *cobra.Command, args []string) {
+		switch args[0] {
+		case "certs":
+			err := certs.CreateSelfSignedCert(
+				config.Config.GetString("network.ssl-config.certificatepath"),
+				config.Config.GetString("network.ssl-config.privatekeypath"))
+			if err != nil {
+				fmt.Println("There was an error generating the self signed certs: %w", err)
+			}
+		case "config":
+			config.CreateDefaultConfig(config.Config)
+		default:
+			fmt.Println("Invalid argument. Use 'certs' or 'config'.")
+		}
+	},
+}
+
+func validGenerateArgs() cobra.PositionalArgs {
+	return func(cmd *cobra.Command, args []string) error {
+		validArgs := []string{"certs", "config"}
+		for _, valid := range validArgs {
+			if args[0] == valid {
+				return nil
+			}
+		}
+		return fmt.Errorf("invalid argument: '%s'. Must be one of 'certs' or 'config'", args[0])
+	}
+}
+
 func init() {
 	// Add commands to rootCmd
 	rootCmd.AddCommand(startCmd)
+	rootCmd.AddCommand(generateCmd)
 
 	// Initialize Viper config
 	cobra.OnInitialize(initConfig)
