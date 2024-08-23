@@ -55,17 +55,17 @@ func CreateDefaultConfig(config ConfigProvider) {
 	// TODO: Add default config
 	yamlExample := []byte(`
 general:
-  debug: True
-  production: False
-  Port: 8080
-
-Network:
-  FQDN: "packagelock.company.com"
-  ForceHTTP: False
-  SSL:
-    CertificatePath: "/etc/packagelock/ssl/cert.pem"
-    PrivateKeyPath: "/etc/packagelock/ssl/privkey.pem"
-    AllowSelfSigned: False
+  debug: true
+  production: false
+network:
+  fqdn: 0.0.0.0
+  port: 8080
+  ssl: true
+  ssl-config:
+    redirecthttp: true
+    allowselfsigned: true
+    certificatepath: ./certs/testing.crt
+    privatekeypath: ./certs/testing.key
   `)
 
 	err := config.ReadConfig(bytes.NewBuffer(yamlExample))
