@@ -144,6 +144,14 @@ TODO: explain usage
 - [ ] agent fetches running docker/podman containers, updates, restarts etc
 - [ ] user management & SSH keys
 - [ ] system definition in mpackagelock file for easy recovery & scaling
+- [ ] CLI-Commands to add:
+  - [ ] sync now|timestamp - force sync the server with the Agents
+  - [ ] logs -s (severity) info|warning|error -d (date to start) 2024-08-23-10-00-00 (date-time)
+  - [ ] backup - Creates a backup from server, server config, database
+  - [ ] generate certs letsencrypt - lets encrypt certs
+  - [ ] generate certs letsencrypt renew - renews
+  - [ ] test - runs healthchecks on server
+  - [ ] test agents - runs healthchecks on agents
 
 
 
