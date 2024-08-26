@@ -110,10 +110,43 @@ Install docker. Thats it.
 
 ### Installation
 
-Run the container:
+#### Docker Run:
 ```bash
 sudo docker run -p 8080:8080 hilkopterbob/packagelock
 ```
+
+#### Docker Compose:
+
+- download the docker-compose file:
+`~/ $: wget https://github.com/HilkopterBob/PackageLock/blob/master/docker-compose.yml`
+
+- get the default config & rename it to `config.yml`:
+```bash
+~/ $: wget https://github.com/HilkopterBob/PackageLock/blob/master/default-config.yml
+~/ $: mv default-config.yml config.yml
+```
+- edit the config
+- run docker compose:
+`~/ $: docker-compose up -d`
+
+The default-config:
+```yaml
+general:
+    debug: true
+    production: false
+network:
+    fqdn: 0.0.0.0
+    port: 8080
+    ssl: true
+    ssl-config:
+        allowselfsigned: true
+        certificatepath: ./certs/testing.crt
+        privatekeypath: ./certs/testing.key
+        redirecthttp: true
+```
+
+
+
 
 <!-- USAGE EXAMPLES -->
 ## Usage

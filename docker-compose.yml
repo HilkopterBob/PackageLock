@@ -1,0 +1,12 @@
+version: "3.8" # You can use any version you prefer
+services:
+  packagelock:
+    image: hilkopterbob/packagelock:unstable-db-integration # Replace `latest` with the version if needed
+    container_name: packagelock_container # Optional: Name the container
+    ports:
+      - "8080:8080" # Map your container's port to the host. Change if necessary
+    volumes:
+      - ./data/certs:/app/certs
+      - ./data/config.yml:/app/config.yml
+    restart: always # Automatically restart the container if it stops
+
