@@ -55,19 +55,23 @@ func StartViper(config ConfigProvider) ConfigProvider {
 func CreateDefaultConfig(config ConfigProvider) {
 	// TODO: Add default config
 	yamlExample := []byte(`
-general:
+generalgeneral:
   debug: true
   production: false
+database:
+  address: 172.19.0.2
+  port: 27017
+  username: username
+  password: password
 network:
   fqdn: 0.0.0.0
   port: 8080
   ssl: true
   ssl-config:
-    redirecthttp: true
     allowselfsigned: true
     certificatepath: ./certs/testing.crt
     privatekeypath: ./certs/testing.key
-  `)
+    redirecthttp: true  `)
 
 	err := config.ReadConfig(bytes.NewBuffer(yamlExample))
 	if err != nil {

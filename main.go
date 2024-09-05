@@ -8,13 +8,17 @@ import (
 	"packagelock/certs"
 	"packagelock/config"
 	"packagelock/server"
+	"packagelock/structs"
 	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var (
@@ -57,11 +61,11 @@ var stopCmd = &cobra.Command{
 
 // Generate command
 var generateCmd = &cobra.Command{
-	Use:       "generate [certs|config]",
-	Short:     "Generate certs or config files",
-	Long:      "Generate certificates or configuration files required by the application.",
-	Args:      cobra.MatchAll(cobra.ExactArgs(1), validGenerateArgs()), // Expect exactly one argument: either "certs" or "config"
-	ValidArgs: []string{"certs", "config"},                             // Restrict arguments to these options
+	Use:       "generate [certs|config|user]",
+	Short:     "Generate certs or config files or a user",
+	Long:      "Generate certificates, configuration files or a user required by the application.",
+	Args:      cobra.MatchAll(cobra.ExactArgs(1), validGenerateArgs()),
+	ValidArgs: []string{"certs", "config", "user"},
 	Run: func(cmd *cobra.Command, args []string) {
 		switch args[0] {
 		case "certs":
@@ -73,6 +77,11 @@ var generateCmd = &cobra.Command{
 			}
 		case "config":
 			config.CreateDefaultConfig(config.Config)
+		case "user":
+			err := GenerateUser()
+			if err != nil {
+				fmt.Println(err)
+			}
 		default:
 			fmt.Println("Invalid argument. Use 'certs' or 'config'.")
 		}
@@ -81,13 +90,13 @@ var generateCmd = &cobra.Command{
 
 func validGenerateArgs() cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
-		validArgs := []string{"certs", "config"}
+		validArgs := []string{"certs", "config", "user"}
 		for _, valid := range validArgs {
 			if args[0] == valid {
 				return nil
 			}
 		}
-		return fmt.Errorf("invalid argument: '%s'. Must be one of 'certs' or 'config'", args[0])
+		return fmt.Errorf("invalid argument: '%s'. Must be one of 'certs' or 'config' or 'user'", args[0])
 	}
 }
 
@@ -100,6 +109,66 @@ func init() {
 
 	// Initialize Viper config
 	cobra.OnInitialize(initConfig)
+}
+
+// generate one-of admin for login and Setup
+
+func GenerateUser() error {
+	fmt.Println("Starting to generate user")
+	config.Config = config.StartViper(viper.New())
+
+	// Set up a context with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Connect to MongoDB
+	username := config.Config.GetString("database.username")
+	password := config.Config.GetString("database.password")
+	dbAddress := config.Config.GetString("database.address")
+	dbPort := config.Config.GetString("database.port")
+	dbConnectionURI := fmt.Sprint("mongodb://", username, ":", password, "@", dbAddress, ":", dbPort, "/")
+
+	fmt.Println(dbAddress)
+	fmt.Println(dbConnectionURI)
+
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(dbConnectionURI))
+	if err != nil {
+		return fmt.Errorf("failed to connect to database: %w", err)
+	}
+
+	fmt.Println("Connected to db")
+
+	// Ensure the client disconnects properly
+	defer func() {
+		if err := client.Disconnect(ctx); err != nil {
+			panic(err)
+		}
+	}()
+
+	// Select the collection
+	coll := client.Database("packagelock").Collection("users")
+	fmt.Println(coll)
+
+	// Create a new user
+	usr := structs.User{
+		UserID:       uuid.New(),
+		Username:     "Nick",
+		Password:     "NicksPasswort",
+		Groups:       []string{"Admin", "Group2"},
+		CreationTime: time.Now(),
+		UpdateTime:   time.Now(),
+		ApiKeys:      []structs.ApiKey{},
+	}
+	fmt.Println(usr)
+
+	// Insert the user into the collection
+	result, err := coll.InsertOne(ctx, usr)
+	if err != nil {
+		return fmt.Errorf("failed to insert document: %w", err)
+	}
+
+	fmt.Printf("Inserted document with _id: %v\n", result.InsertedID)
+	return nil
 }
 
 // initConfig initializes Viper and configures the application
