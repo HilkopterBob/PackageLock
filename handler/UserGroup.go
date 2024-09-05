@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"packagelock/config"
@@ -16,11 +15,13 @@ import (
 )
 
 func LoginHandler(c *fiber.Ctx) error {
+	// Data Sheme
 	type LoginRequest struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
 	}
 
+	// Cast POST
 	var loginReq LoginRequest
 	if err := c.BodyParser(&loginReq); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -28,13 +29,14 @@ func LoginHandler(c *fiber.Ctx) error {
 		})
 	}
 
-	// var user structs.User
-	// Find the user by username
+	// Create a Query Filter for DB
 	filter := bson.D{
 		{"username", loginReq.Username},
 		{"password", loginReq.Password},
 	}
-	// usersColl := db.Client.Database("packagelock").Collection("users")
+
+	// Creating Pointer to first filter Hit,
+	// extracting all hits and cast to slice
 	cursor, err := db.Client.Database("packagelock").Collection("users").Find(context.TODO(), filter)
 	if err != nil {
 		return err
@@ -45,18 +47,7 @@ func LoginHandler(c *fiber.Ctx) error {
 		panic(err)
 	}
 
-	fmt.Println(filter)
-	fmt.Println(result)
-	// As 'user' is a struct, check for a must-have value (USerID)
-	// If UserID == "" the user couldn't be found -> doesn't exist!
-	//if user.UserID == "" {
-	//	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-	//		"error": "Invalid username or password",
-	//	})
-	//}
-
-	// Validate the password
-	// Generate JWT token
+	// create JWT
 	token := jwt.New(jwt.SigningMethodRS256)
 	claims := token.Claims.(jwt.MapClaims)
 	claims["username"] = result[0].Username
@@ -68,12 +59,10 @@ func LoginHandler(c *fiber.Ctx) error {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(keyData)
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	tokenString, err := token.SignedString(privateKey)
 	if err != nil {
 		log.Println("Failed to generate JWT token:", err)
@@ -82,6 +71,8 @@ func LoginHandler(c *fiber.Ctx) error {
 		})
 	}
 
+	// Create && Populate new JWT-Onject
+	// for appending to User && storing in DB
 	newJWT := structs.ApiKey{
 		KeyValue:         tokenString,
 		Description:      "User Generated JWT",
@@ -96,23 +87,17 @@ func LoginHandler(c *fiber.Ctx) error {
 	filter = bson.D{
 		{"userid", result[0].UserID},
 	}
+	result[0].UpdateTime = time.Now() // User last Update Now!
 
-	result[0].UpdateTime = time.Now()
-
+	// Replace Old User Object with new One
 	replacement, err := bson.Marshal(result[0])
 	if err != nil {
 		return err
 	}
-	fmt.Println("HALLO")
 	updateResult, err := db.Client.Database("packagelock").Collection("users").ReplaceOne(context.Background(), filter, replacement)
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
-
-	fmt.Println(updateResult)
-
-	fmt.Println("Printing Result now:")
-	fmt.Println(result[0])
 
 	return c.JSON(newJWT)
 }
