@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"packagelock/certs"
 	"packagelock/config"
+	"packagelock/db"
 	"packagelock/server"
 	"packagelock/structs"
 	"strconv"
@@ -178,6 +179,23 @@ func initConfig() {
 	// If AppVersion is injected, set it in the configuration
 	if AppVersion != "" {
 		config.Config.SetDefault("general.app-version", AppVersion)
+	}
+
+	// Connect to MongoDB
+	username := config.Config.GetString("database.username")
+	password := config.Config.GetString("database.password")
+	dbAddress := config.Config.GetString("database.address")
+	dbPort := config.Config.GetString("database.port")
+	dbConnectionURI := fmt.Sprint("mongodb://", username, ":", password, "@", dbAddress, ":", dbPort, "/")
+
+	var err error
+	db.Client, err = db.ConnectDb(dbConnectionURI)
+	if err != nil {
+		fmt.Println(err)
+	}
+	db.DB = db.Client.Database("packagelock")
+	if err != nil {
+		fmt.Println(err)
 	}
 
 	// Check and create self-signed certificates if missing
