@@ -4,6 +4,12 @@
 // It is a Package Utility.
 package structs
 
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+
 type Network_Info struct {
 	Ip_addr  string
 	Mac_addr string
@@ -31,9 +37,21 @@ type Agent struct {
 	Agent_ID     int
 }
 
+type ApiKey struct {
+	KeyValue         string
+	Description      string
+	AccessSeperation bool     // true means fine grained access control
+	AccessRights     []string // eg. read, write OR create, update, delete
+	CreationTime     time.Time
+	UpdateTime       time.Time
+}
+
 type User struct {
-	Username string
-	Password string
-	UserID   string
-	APIToken []string
+	UserID       uuid.UUID
+	Username     string
+	Password     string
+	Groups       []string
+	CreationTime time.Time
+	UpdateTime   time.Time
+	ApiKeys      []ApiKey
 }
