@@ -1,14 +1,18 @@
 package handler
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"os"
 	"packagelock/config"
+	"packagelock/db"
 	"packagelock/structs"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func LoginHandler(c *fiber.Ctx) error {
@@ -24,39 +28,43 @@ func LoginHandler(c *fiber.Ctx) error {
 		})
 	}
 
-	var user structs.User
+	// var user structs.User
 	// Find the user by username
-	for _, u := range Users {
-		if u.Username == loginReq.Username {
-			user = u
-			break
-		}
+	filter := bson.D{
+		{"username", loginReq.Username},
+		{"password", loginReq.Password},
+	}
+	// usersColl := db.Client.Database("packagelock").Collection("users")
+	cursor, err := db.Client.Database("packagelock").Collection("users").Find(context.TODO(), filter)
+	if err != nil {
+		return err
 	}
 
+	var result []structs.User
+	if err = cursor.All(context.TODO(), &result); err != nil {
+		panic(err)
+	}
+
+	fmt.Println(filter)
+	fmt.Println(result)
 	// As 'user' is a struct, check for a must-have value (USerID)
 	// If UserID == "" the user couldn't be found -> doesn't exist!
-	if user.UserID == "" {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "Invalid username or password",
-		})
-	}
+	//if user.UserID == "" {
+	//	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+	//		"error": "Invalid username or password",
+	//	})
+	//}
 
 	// Validate the password
-	if user.Password != loginReq.Password {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "Invalid username or password",
-		})
-	}
-
 	// Generate JWT token
 	token := jwt.New(jwt.SigningMethodRS256)
 	claims := token.Claims.(jwt.MapClaims)
-	claims["username"] = user.Username
-	claims["userID"] = user.UserID
+	claims["username"] = result[0].Username
+	claims["userID"] = result[0].UserID
 	claims["exp"] = time.Now().Add(time.Hour * 72).Unix() // 3 days expiry
 
 	// Sign and get the encoded token
-	keyData, err := os.ReadFile(config.Config.GetString("network.ssl.privatekeypath"))
+	keyData, err := os.ReadFile(config.Config.GetString("network.ssl-config.privatekeypath"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -74,13 +82,37 @@ func LoginHandler(c *fiber.Ctx) error {
 		})
 	}
 
-	// Add the token to the user's APIToken slice
-	user.APIToken = append(user.APIToken, tokenString)
+	newJWT := structs.ApiKey{
+		KeyValue:         tokenString,
+		Description:      "User Generated JWT",
+		AccessSeperation: false,
+		AccessRights:     make([]string, 0),
+		CreationTime:     time.Now(),
+		UpdateTime:       time.Now(),
+	}
 
-	// Return the token and user information
-	return c.JSON(fiber.Map{
-		"message":  "Login successful",
-		"token":    tokenString,
-		"username": user.Username,
-	})
+	// Add the token to the user's APIToken slice
+	result[0].ApiKeys = append(result[0].ApiKeys, newJWT)
+	filter = bson.D{
+		{"userid", result[0].UserID},
+	}
+
+	result[0].UpdateTime = time.Now()
+
+	replacement, err := bson.Marshal(result[0])
+	if err != nil {
+		return err
+	}
+	fmt.Println("HALLO")
+	updateResult, err := db.Client.Database("packagelock").Collection("users").ReplaceOne(context.Background(), filter, replacement)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(updateResult)
+
+	fmt.Println("Printing Result now:")
+	fmt.Println(result[0])
+
+	return c.JSON(newJWT)
 }
