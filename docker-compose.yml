@@ -7,6 +7,6 @@ services:
       - "8080:8080" # Map your container's port to the host. Change if necessary
     volumes:
       - ./data/certs:/app/certs
-      - ./data/config.yml:/app/config.yml
+      - ./data/config.yml:/app/config.yaml
     restart: always # Automatically restart the container if it stops
 
