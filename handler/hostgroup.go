@@ -1,6 +1,9 @@
 package handler
 
 import (
+	"context"
+	"fmt"
+	"packagelock/db"
 	"packagelock/structs"
 
 	"github.com/gofiber/fiber/v2"
@@ -19,9 +22,12 @@ func RegisterHost(c *fiber.Ctx) error {
 		})
 	}
 
-	// Append new host to the Hosts slice
-	Hosts = append(Hosts, newHost)
+	coll := db.Client.Database("packagelock").Collection("hosts")
+	_, err := coll.InsertOne(context.Background(), newHost)
+	if err != nil {
+		return fmt.Errorf("failed to add new Host to db: %w", err)
+	}
 
-	// Respond with the newly created host
+	// Respond with the newly created agent
 	return c.Status(fiber.StatusCreated).JSON(newHost)
 }
