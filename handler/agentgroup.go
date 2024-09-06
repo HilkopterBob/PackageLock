@@ -61,9 +61,6 @@ func RegisterAgent(c *fiber.Ctx) error {
 		})
 	}
 
-	fmt.Println("Creating a new Agent")
-	fmt.Println(newAgent)
-
 	coll := db.Client.Database("packagelock").Collection("agents")
 	_, err := coll.InsertOne(context.Background(), newAgent)
 	if err != nil {
