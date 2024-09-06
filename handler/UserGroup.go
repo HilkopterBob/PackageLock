@@ -94,7 +94,7 @@ func LoginHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	updateResult, err := db.Client.Database("packagelock").Collection("users").ReplaceOne(context.Background(), filter, replacement)
+	_, err = db.Client.Database("packagelock").Collection("users").ReplaceOne(context.Background(), filter, replacement)
 	if err != nil {
 		return err
 	}
