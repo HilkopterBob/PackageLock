@@ -7,7 +7,6 @@ import (
 	"os/signal"
 	"packagelock/certs"
 	"packagelock/config"
-	"packagelock/db"
 	"packagelock/server"
 	"packagelock/structs"
 	"strconv"
@@ -18,8 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"github.com/surrealdb/surrealdb.go"
 )
 
 var (
@@ -79,7 +77,7 @@ var generateCmd = &cobra.Command{
 		case "config":
 			config.CreateDefaultConfig(config.Config)
 		case "user":
-			err := GenerateUser()
+			err := TestDB()
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -114,61 +112,54 @@ func init() {
 
 // generate one-of admin for login and Setup
 
-func GenerateUser() error {
-	fmt.Println("Starting to generate user")
-	config.Config = config.StartViper(viper.New())
+func TestDB() error {
+	// Test data
 
-	// Set up a context with a timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	// Connect to MongoDB
-	username := config.Config.GetString("database.username")
-	password := config.Config.GetString("database.password")
-	dbAddress := config.Config.GetString("database.address")
-	dbPort := config.Config.GetString("database.port")
-	dbConnectionURI := fmt.Sprint("mongodb://", username, ":", password, "@", dbAddress, ":", dbPort, "/")
-
-	fmt.Println(dbAddress)
-	fmt.Println(dbConnectionURI)
-
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(dbConnectionURI))
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
+	TestUserApiKey := structs.ApiKey{
+		KeyValue:         "ApiToken",
+		Description:      "TestuserApiTokenDescription",
+		AccessSeperation: false,
+		AccessRights:     []string{},
+		CreationTime:     time.Now(),
+		UpdateTime:       time.Now(),
 	}
 
-	fmt.Println("Connected to db")
-
-	// Ensure the client disconnects properly
-	defer func() {
-		if err := client.Disconnect(ctx); err != nil {
-			panic(err)
-		}
-	}()
-
-	// Select the collection
-	coll := client.Database("packagelock").Collection("users")
-	fmt.Println(coll)
-
-	// Create a new user
-	usr := structs.User{
+	TestUser := structs.User{
 		UserID:       uuid.New(),
-		Username:     "Nick",
-		Password:     "NicksPasswort",
-		Groups:       []string{"Admin", "Group2"},
+		Username:     "Testuser 2",
+		Password:     "Testpasswd, in bytes",
+		Groups:       []string{"Admin", "StorageAdmin", "Audit"},
 		CreationTime: time.Now(),
 		UpdateTime:   time.Now(),
-		ApiKeys:      []structs.ApiKey{},
+		ApiKeys:      []structs.ApiKey{TestUserApiKey},
 	}
-	fmt.Println(usr)
 
-	// Insert the user into the collection
-	result, err := coll.InsertOne(ctx, usr)
+	db, err := surrealdb.New("ws://localhost:8000/rpc")
 	if err != nil {
-		return fmt.Errorf("failed to insert document: %w", err)
+		panic(err)
 	}
 
-	fmt.Printf("Inserted document with _id: %v\n", result.InsertedID)
+	if _, err = db.Use("test", "test"); err != nil {
+		panic(err)
+	}
+
+	// Insert user
+	data, err := db.Create("user", TestUser)
+	if err != nil {
+		panic(err)
+	}
+
+	// Unmarshal data
+	createdUser := make([]structs.User, 1)
+	err = surrealdb.Unmarshal(data, &createdUser)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(db.Select("user"))
+
+	// fmt.Println(createdUser)
+
 	return nil
 }
 
@@ -181,21 +172,14 @@ func initConfig() {
 		config.Config.SetDefault("general.app-version", AppVersion)
 	}
 
-	// Connect to MongoDB
-	username := config.Config.GetString("database.username")
-	password := config.Config.GetString("database.password")
-	dbAddress := config.Config.GetString("database.address")
-	dbPort := config.Config.GetString("database.port")
-	dbConnectionURI := fmt.Sprint("mongodb://", username, ":", password, "@", dbAddress, ":", dbPort, "/")
-
-	var err error
-	db.Client, err = db.ConnectDb(dbConnectionURI)
+	// Connect to surreal db
+	db, err := surrealdb.New("ws://localhost:8000/rpc")
 	if err != nil {
-		fmt.Println(err)
+		panic(err)
 	}
-	db.DB = db.Client.Database("packagelock")
-	if err != nil {
-		fmt.Println(err)
+
+	if _, err = db.Use("test", "test"); err != nil {
+		panic(err)
 	}
 
 	// Check and create self-signed certificates if missing
