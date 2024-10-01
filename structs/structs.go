@@ -5,6 +5,11 @@
 package structs
 
 type Network_Info struct {
+	Interfaces []string
+}
+
+type Interface struct {
+	Name string
 	Ip_addr  string
 	Gateway string
 	DNS_servers []string
@@ -13,14 +18,13 @@ type Network_Info struct {
 	Mac_addr string
 	Domain string
 }
-
 type Package_Manager struct {
 	Package_manager_name string
 	Package_repos        []string // A Slice containing all Repository Links.
 }
 
 type Host struct {
-	Name             string // FQDN
+	Name             string // Hostname
 	Uname			 string //Linux Distro
 	ID               int
 	Current_packages []string // A Slice with all currently installed Packages.
