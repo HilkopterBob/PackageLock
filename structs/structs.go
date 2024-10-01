@@ -5,19 +5,27 @@
 package structs
 
 type Network_Info struct {
-	Ip_addr  string
-	Mac_addr string
-	// TODO: add domain or FQDN
+	Interfaces []string
+	Domain string
+	DNSServers []string
 }
 
+type Interface struct {
+	Name string
+	IpAddr  string
+	Gateway string
+	Netmask string
+	LinkSpeed int
+	MacAddr string
+}
 type Package_Manager struct {
 	Package_manager_name string
 	Package_repos        []string // A Slice containing all Repository Links.
 }
 
 type Host struct {
-	// TODO: support different linux distros
-	Name             string // FQDN
+	Name             string // Hostname
+	Uname			 string //Linux Distro
 	ID               int
 	Current_packages []string // A Slice with all currently installed Packages.
 	Network_info     Network_Info
@@ -33,6 +41,7 @@ type Agent struct {
 
 type User struct {
 	Username string
+	Group string
 	Password string
 	UserID   string
 	APIToken []string
