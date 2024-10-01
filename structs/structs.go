@@ -7,16 +7,16 @@ package structs
 type Network_Info struct {
 	Interfaces []string
 	Domain string
-	DNS_Servers []string
+	DNSServers []string
 }
 
 type Interface struct {
 	Name string
-	Ip_Addr  string
+	IpAddr  string
 	Gateway string
 	Netmask string
-	Link_Speed int
-	Mac_Addr string
+	LinkSpeed int
+	MacAddr string
 }
 type Package_Manager struct {
 	Package_manager_name string
