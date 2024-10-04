@@ -1,40 +1,41 @@
 package handler
 
 import (
-	"context"
 	"packagelock/db"
 	"packagelock/structs"
 
 	"github.com/gofiber/fiber/v2"
-	"go.mongodb.org/mongo-driver/bson"
+	"github.com/surrealdb/surrealdb.go"
 )
 
 // GetHosts responds with a list of all hosts.
 func GetHosts(c *fiber.Ctx) error {
-	allHostsCursor, err := db.Client.Database("packagelock").Collection("hosts").Find(context.Background(), bson.D{})
+	hosts, err := db.DB.Select("hosts")
 	if err != nil {
-		// TODO: Logging
-		// TODO: Error handling
-		return err
-	}
-	var result []structs.Host
-	if err = allHostsCursor.All(context.TODO(), &result); err != nil {
+		// FIXME: Error handling
 		panic(err)
 	}
-	return c.Status(fiber.StatusOK).JSON(result)
+	var hostsSlice []structs.Host
+	err = surrealdb.Unmarshal(hosts, &hostsSlice)
+	if err != nil {
+		// FIXME: Error handling
+		panic(err)
+	}
+	return c.Status(fiber.StatusOK).JSON(hostsSlice)
 }
 
 // GetAgents responds with a list of all agents.
 func GetAgents(c *fiber.Ctx) error {
-	allAgentsCursor, err := db.Client.Database("packagelock").Collection("agents").Find(context.Background(), bson.D{})
+	agents, err := db.DB.Select("agents")
 	if err != nil {
-		// TODO: Logging
-		// TODO: Error handling
-		return err
-	}
-	var result []structs.Agent
-	if err = allAgentsCursor.All(context.TODO(), &result); err != nil {
+		// FIXME: Error handling
 		panic(err)
 	}
-	return c.Status(fiber.StatusOK).JSON(result)
+	var agentsSlice []structs.Host
+	err = surrealdb.Unmarshal(agents, &agentsSlice)
+	if err != nil {
+		// FIXME: error handling
+		panic(err)
+	}
+	return c.Status(fiber.StatusOK).JSON(agentsSlice)
 }
