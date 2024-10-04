@@ -167,16 +167,6 @@ func initConfig() {
 		config.Config.SetDefault("general.app-version", AppVersion)
 	}
 
-	// Connect to surreal db
-	db, err := surrealdb.New("ws://localhost:8000/rpc")
-	if err != nil {
-		panic(err)
-	}
-
-	if _, err = db.Use("test", "test"); err != nil {
-		panic(err)
-	}
-
 	// Check and create self-signed certificates if missing
 	if _, err := os.Stat(config.Config.GetString("network.ssl-config.certificatepath")); os.IsNotExist(err) {
 		fmt.Println("Certificate files missing, creating new self-signed.")

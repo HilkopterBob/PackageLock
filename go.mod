@@ -9,6 +9,7 @@ require (
 	github.com/gofiber/template/html/v2 v2.1.2
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
+	github.com/k0kubun/pp v3.0.1+incompatible
 	github.com/k0kubun/pp/v3 v3.2.0
 	github.com/sethvargo/go-password v0.3.1
 	github.com/spf13/cobra v1.8.1
@@ -25,6 +26,7 @@ require (
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
