@@ -18,8 +18,21 @@ type Package struct {
 	Updatable      bool
 	CreationTime   time.Time
 	UpdateTime     time.Time
+
+type Network_Info struct {
+	Interfaces []string
+	Domain string
+	DNSServers []string
 }
 
+type Interface struct {
+	Name string
+	IpAddr  string
+	Gateway string
+	Netmask string
+	LinkSpeed int
+	MacAddr string
+}
 type Package_Manager struct {
 	ID                 string `json:"id,omitempty"`
 	PackageManagerName string
@@ -29,7 +42,6 @@ type Package_Manager struct {
 }
 
 type Host struct {
-	// TODO: support different linux distros
 	ID             string `json:"id,omitempty"`
 	Hostname       string // FQDN
 	HostID         uuid.UUID
@@ -72,4 +84,5 @@ type User struct {
 	CreationTime time.Time
 	UpdateTime   time.Time
 	ApiKeys      []ApiKey
+
 }
