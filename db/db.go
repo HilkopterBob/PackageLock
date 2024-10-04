@@ -41,5 +41,7 @@ func Select(tablename string, SliceOfType interface{}) error {
 		// Error Handling?
 		panic(err)
 	}
+
+	// FIXME: Add Success msg in Log!
 	return nil
 }
