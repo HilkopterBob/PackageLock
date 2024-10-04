@@ -1,30 +1,40 @@
 package db
 
-import "github.com/surrealdb/surrealdb.go"
+import (
+	"packagelock/config"
+
+	"github.com/surrealdb/surrealdb.go"
+)
 
 var DB *surrealdb.DB
 
 func InitDB() error {
-	db, err := surrealdb.New("ws://localhost:8000/rpc")
+	dbAddress := config.Config.GetString("database.address")
+	dbPort := config.Config.GetString("database.port")
+	dbUsername := config.Config.GetString("database.username")
+	dbPasswd := config.Config.GetString("database.password")
+
+	db, err := surrealdb.New("ws://" + dbAddress + ":" + dbPort + "/rpc")
 	if err != nil {
 		panic(err)
 	}
 
 	if _, err = db.Signin(map[string]interface{}{
 		// TODO: get user&password from Conf
-		"user": "root",
-		"pass": "root",
+		"user": dbUsername,
+		"pass": dbPasswd,
 	}); err != nil {
+		// FIXME: Error handling
+		// FIXME: Logging of wrong username and maybe SHA-PASSWD?
 		panic(err)
 	}
 
-	if _, err = db.Use("PackageLock", "db1.0"); err != nil {
+	if _, err = db.Use("PackageLock", "db2.0"); err != nil {
 		// This Error indecates the non existance of ther the
 		// PackageLock Namespace or the db.
 		// If this happens, we should run a basic db setup.
 		// TODO: Create DB migration in migration.go
 		// Ether way we should log and handle the error
-		// FIXME: Logging
 		// FIXME: Error handling
 		panic(err)
 	}
