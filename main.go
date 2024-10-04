@@ -16,10 +16,11 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/google/uuid"
+	"github.com/k0kubun/pp/v3"
+	"github.com/sethvargo/go-password/password"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"github.com/surrealdb/surrealdb.go"
 )
 
 var (
@@ -62,11 +63,11 @@ var stopCmd = &cobra.Command{
 
 // Generate command
 var generateCmd = &cobra.Command{
-	Use:       "generate [certs|config|user]",
-	Short:     "Generate certs or config files or a user",
-	Long:      "Generate certificates, configuration files or a user required by the application.",
+	Use:       "generate [certs|config|admin-user]",
+	Short:     "Generate certs or config files or an  admin-user",
+	Long:      "Generate certificates, configuration files or an admin-user required by the application.",
 	Args:      cobra.MatchAll(cobra.ExactArgs(1), validGenerateArgs()),
-	ValidArgs: []string{"certs", "config", "user"},
+	ValidArgs: []string{"certs", "config", "admin"},
 	Run: func(cmd *cobra.Command, args []string) {
 		switch args[0] {
 		case "certs":
@@ -78,20 +79,22 @@ var generateCmd = &cobra.Command{
 			}
 		case "config":
 			config.CreateDefaultConfig(config.Config)
-		case "user":
-			err := GenerateUser()
+		case "admin":
+			err := generateAdmin()
 			if err != nil {
-				fmt.Println(err)
+				// FIXME: Error Handling
+				// FIXME: Logging! Because: Invocation of admin creation should be logged!
+				panic(err)
 			}
 		default:
-			fmt.Println("Invalid argument. Use 'certs' or 'config'.")
+			fmt.Println("Invalid argument. Use 'certs' or 'config' or 'admin'.")
 		}
 	},
 }
 
 func validGenerateArgs() cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
-		validArgs := []string{"certs", "config", "user"}
+		validArgs := []string{"certs", "config", "admin"}
 		for _, valid := range validArgs {
 			if args[0] == valid {
 				return nil
@@ -108,67 +111,50 @@ func init() {
 	rootCmd.AddCommand(restartCmd)
 	rootCmd.AddCommand(stopCmd)
 
-	// Initialize Viper config
-	cobra.OnInitialize(initConfig)
+	initConfig()
+	err := db.InitDB()
+	if err != nil {
+		// FIXME: error Handling
+		// FIXME: LOGGING!
+		panic(err)
+	}
 }
 
-// generate one-of admin for login and Setup
-
-func GenerateUser() error {
-	fmt.Println("Starting to generate user")
-	config.Config = config.StartViper(viper.New())
-
-	// Set up a context with a timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	// Connect to MongoDB
-	username := config.Config.GetString("database.username")
-	password := config.Config.GetString("database.password")
-	dbAddress := config.Config.GetString("database.address")
-	dbPort := config.Config.GetString("database.port")
-	dbConnectionURI := fmt.Sprint("mongodb://", username, ":", password, "@", dbAddress, ":", dbPort, "/")
-
-	fmt.Println(dbAddress)
-	fmt.Println(dbConnectionURI)
-
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(dbConnectionURI))
+// generate admin for login and Setup
+func generateAdmin() error {
+	adminPw, err := password.Generate(64, 10, 10, false, false)
 	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
+		// FIXME: error Handling
+		panic(err)
 	}
 
-	fmt.Println("Connected to db")
-
-	// Ensure the client disconnects properly
-	defer func() {
-		if err := client.Disconnect(ctx); err != nil {
-			panic(err)
-		}
-	}()
-
-	// Select the collection
-	coll := client.Database("packagelock").Collection("users")
-	fmt.Println(coll)
-
-	// Create a new user
-	usr := structs.User{
+	// Admin Data
+	TemporalAdmin := structs.User{
 		UserID:       uuid.New(),
-		Username:     "Nick",
-		Password:     "NicksPasswort",
-		Groups:       []string{"Admin", "Group2"},
+		Username:     "admin",
+		Password:     adminPw,
+		Groups:       []string{"Admin", "StorageAdmin", "Audit"},
 		CreationTime: time.Now(),
 		UpdateTime:   time.Now(),
-		ApiKeys:      []structs.ApiKey{},
+		ApiKeys:      nil,
 	}
-	fmt.Println(usr)
 
-	// Insert the user into the collection
-	result, err := coll.InsertOne(ctx, usr)
+	// Insert Admin
+	AdminInsertionData, err := db.DB.Create("user", TemporalAdmin)
 	if err != nil {
-		return fmt.Errorf("failed to insert document: %w", err)
+		panic(err)
 	}
 
-	fmt.Printf("Inserted document with _id: %v\n", result.InsertedID)
+	// Unmarshal data
+	var createdUser structs.User
+	err = surrealdb.Unmarshal(AdminInsertionData, &createdUser)
+	if err != nil {
+		pp.Println(AdminInsertionData)
+		panic(err)
+	}
+
+	pp.Println(createdUser.Username)
+	pp.Println(createdUser.Password)
 	return nil
 }
 
@@ -181,21 +167,14 @@ func initConfig() {
 		config.Config.SetDefault("general.app-version", AppVersion)
 	}
 
-	// Connect to MongoDB
-	username := config.Config.GetString("database.username")
-	password := config.Config.GetString("database.password")
-	dbAddress := config.Config.GetString("database.address")
-	dbPort := config.Config.GetString("database.port")
-	dbConnectionURI := fmt.Sprint("mongodb://", username, ":", password, "@", dbAddress, ":", dbPort, "/")
-
-	var err error
-	db.Client, err = db.ConnectDb(dbConnectionURI)
+	// Connect to surreal db
+	db, err := surrealdb.New("ws://localhost:8000/rpc")
 	if err != nil {
-		fmt.Println(err)
+		panic(err)
 	}
-	db.DB = db.Client.Database("packagelock")
-	if err != nil {
-		fmt.Println(err)
+
+	if _, err = db.Use("test", "test"); err != nil {
+		panic(err)
 	}
 
 	// Check and create self-signed certificates if missing

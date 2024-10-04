@@ -55,14 +55,14 @@ func StartViper(config ConfigProvider) ConfigProvider {
 func CreateDefaultConfig(config ConfigProvider) {
 	// TODO: Add default config
 	yamlExample := []byte(`
-generalgeneral:
+general:
   debug: true
   production: false
 database:
-  address: 172.19.0.2
-  port: 27017
-  username: username
-  password: password
+  address: 127.0.0.1
+  port: 8000
+  username: root
+  password: root
 network:
   fqdn: 0.0.0.0
   port: 8080
