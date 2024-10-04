@@ -18,7 +18,14 @@ func InitDB() error {
 		panic(err)
 	}
 
-	if _, err = db.Use("test", "test"); err != nil {
+	if _, err = db.Use("PackageLock", "db1.0"); err != nil {
+		// This Error indecates the non existance of ther the
+		// PackageLock Namespace or the db.
+		// If this happens, we should run a basic db setup.
+		// TODO: Create DB migration in migration.go
+		// Ether way we should log and handle the error
+		// FIXME: Logging
+		// FIXME: Error handling
 		panic(err)
 	}
 
