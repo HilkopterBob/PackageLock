@@ -164,6 +164,8 @@ TODO: explain usage
 - [ ] backend-api to manage Agents & Hosts
 - [ ] frontend to visualize backend data
 - [ ] installable agent as background daemon
+- [ ] agent CLI:
+  - [ ] `packagelock id` -> returns agent id
 - [ ] config management
 - [ ] TLS Encryption
 - [ ] Best Practice based Package Layout
