@@ -18,20 +18,21 @@ type Package struct {
 	Updatable      bool
 	CreationTime   time.Time
 	UpdateTime     time.Time
+}
 
 type Network_Info struct {
 	Interfaces []string
-	Domain string
+	Domain     string
 	DNSServers []string
 }
 
 type Interface struct {
-	Name string
-	IpAddr  string
-	Gateway string
-	Netmask string
+	Name      string
+	IpAddr    string
+	Gateway   string
+	Netmask   string
 	LinkSpeed int
-	MacAddr string
+	MacAddr   string
 }
 type Package_Manager struct {
 	ID                 string `json:"id,omitempty"`
@@ -84,5 +85,4 @@ type User struct {
 	CreationTime time.Time
 	UpdateTime   time.Time
 	ApiKeys      []ApiKey
-
 }
