@@ -26,3 +26,20 @@ func InitDB() error {
 
 	return nil
 }
+
+func Select(tablename string, SliceOfType interface{}) error {
+	transaction, err := DB.Select(tablename)
+	if err != nil {
+		// FIXME: logging?
+		// Error handling
+		panic(err)
+	}
+
+	err = surrealdb.Unmarshal(transaction, &SliceOfType)
+	if err != nil {
+		// FIXME: Logging?
+		// Error Handling?
+		panic(err)
+	}
+	return nil
+}
