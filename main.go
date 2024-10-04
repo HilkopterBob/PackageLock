@@ -111,15 +111,13 @@ func init() {
 	rootCmd.AddCommand(restartCmd)
 	rootCmd.AddCommand(stopCmd)
 
-	// Initialize Viper config
-	cobra.OnInitialize(initConfig)
+	initConfig()
 	err := db.InitDB()
 	if err != nil {
 		// FIXME: error Handling
 		// FIXME: LOGGING!
 		panic(err)
 	}
-	pp.Println()
 }
 
 // generate admin for login and Setup
