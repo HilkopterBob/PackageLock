@@ -21,10 +21,9 @@ type Routes struct {
 
 // addAgentHandler sets up agent-related routes in Fiber.
 func (r Routes) addAgentHandler(group fiber.Router) {
-	AgentGroup := group.Group("/agent")
+	AgentGroup := group.Group("/agents")
 
-	AgentGroup.Get("/:id", handler.GetAgentByID)
-	AgentGroup.Get("/:id/host", handler.GetHostByAgentID)
+	AgentGroup.Get("/", handler.GetAgentByID)
 	AgentGroup.Post("/register", handler.RegisterAgent)
 }
 
@@ -38,8 +37,9 @@ func (r Routes) addGeneralHandler(group fiber.Router) {
 
 // addHostHandler sets up host-related routes in Fiber.
 func (r Routes) addHostHandler(group fiber.Router) {
-	HostGroup := group.Group("/host")
+	HostGroup := group.Group("/hosts")
 
+	HostGroup.Get("/", handler.GetHostByAgentID)
 	HostGroup.Post("/register", handler.RegisterHost)
 }
 

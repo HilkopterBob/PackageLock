@@ -14,7 +14,8 @@ import (
 // GetAgentByID filters a slice of Agents for a matching Agent.Agent_ID.
 // It returns a JSON response with fiber.StatusOK or fiber.StatusNotFound.
 func GetAgentByID(c *fiber.Ctx) error {
-	id, err := strconv.Atoi(c.Params("id"))
+
+	id, err := strconv.Atoi(c.Query("id"))
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -73,7 +74,8 @@ func RegisterAgent(c *fiber.Ctx) error {
 
 // GetHostByAgentID finds the host for a given agent ID.
 func GetHostByAgentID(c *fiber.Ctx) error {
-	id, err := strconv.Atoi(c.Params("id"))
+
+	id, err := strconv.Atoi(c.Query("id"))
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -99,7 +101,7 @@ func GetHostByAgentID(c *fiber.Ctx) error {
 
 	// TODO: Filter all hosts for agent id
 	filter = bson.D{
-		{"id", agents[0].Host_ID},
+		{"id", agents[0].HostID},
 	}
 
 	fmt.Println(filter)
