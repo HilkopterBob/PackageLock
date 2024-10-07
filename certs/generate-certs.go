@@ -52,7 +52,15 @@ func CreateSelfSignedCert(certFile, keyFile string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open cert.pem for writing: %v", err)
 	}
-	defer certOut.Close()
+
+	// INFO: If the parrent throws an err and this defer is called
+	// and fileOut.Close() throws an error to, the original error will be overwritten.
+	defer func() {
+		err := certOut.Close()
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: certDER}); err != nil {
 		return fmt.Errorf("failed to write certificate to cert.pem: %v", err)
@@ -63,7 +71,15 @@ func CreateSelfSignedCert(certFile, keyFile string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open key.pem for writing: %v", err)
 	}
-	defer keyOut.Close()
+
+	// INFO: If the parrent throws an err and this defer is called
+	// and fileOut.Close() throws an error to, the original error will be overwritten.
+	defer func() {
+		err := keyOut.Close()
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	// Marshal the RSA private key
 	privBytes := x509.MarshalPKCS1PrivateKey(priv)
@@ -73,14 +89,4 @@ func CreateSelfSignedCert(certFile, keyFile string) error {
 
 	fmt.Println("Successfully created self-signed RSA certificate and private key.")
 	return nil
-}
-
-func main() {
-	// Call the function to create the self-signed certificate and private key
-	err := CreateSelfSignedCert("server.crt", "server.key")
-	if err != nil {
-		fmt.Println("Error:", err)
-	} else {
-		fmt.Println("Certificate and key generation successful.")
-	}
 }

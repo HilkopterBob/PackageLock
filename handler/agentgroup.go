@@ -106,9 +106,19 @@ func GetHostByAgentID(c *fiber.Ctx) error {
 	}
 
 	hosts, err := db.DB.Select("hosts")
+	if err != nil {
+		// FIXME: Logging!
+		// FIXME: Error handling!
+		panic(err)
+	}
 
 	var hostsSlice []structs.Host
 	err = surrealdb.Unmarshal(hosts, &hostsSlice)
+	if err != nil {
+		// FIXME: errorhandling
+		// FIXME: errorhandling
+		panic(err)
+	}
 
 	var requestedHostByAgentID structs.Host
 	for _, host := range hostsSlice {

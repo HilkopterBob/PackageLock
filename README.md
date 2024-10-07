@@ -137,17 +137,22 @@ sudo docker run -p 8080:8080 hilkopterbob/packagelock
 The default-config:
 ```yaml
 general:
-    debug: true
-    production: false
+  debug: true
+  production: false
+database:
+  address: 127.0.0.1
+  port: 8000
+  username: root
+  password: root
 network:
-    fqdn: 0.0.0.0
-    port: 8080
-    ssl: true
-    ssl-config:
-        allowselfsigned: true
-        certificatepath: ./certs/testing.crt
-        privatekeypath: ./certs/testing.key
-        redirecthttp: true
+  fqdn: 0.0.0.0
+  port: 8080
+  ssl: true
+  ssl-config:
+    allowselfsigned: true
+    certificatepath: ./certs/testing.crt
+    privatekeypath: ./certs/testing.key
+    redirecthttp: true  
 ```
 
 
