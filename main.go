@@ -7,14 +7,20 @@ import (
 	"os/signal"
 	"packagelock/certs"
 	"packagelock/config"
+	"packagelock/db"
 	"packagelock/server"
+	"packagelock/structs"
 	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/google/uuid"
+	"github.com/k0kubun/pp/v3"
+	"github.com/sethvargo/go-password/password"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/surrealdb/surrealdb.go"
 )
 
 var (
@@ -57,11 +63,11 @@ var stopCmd = &cobra.Command{
 
 // Generate command
 var generateCmd = &cobra.Command{
-	Use:       "generate [certs|config]",
-	Short:     "Generate certs or config files",
-	Long:      "Generate certificates or configuration files required by the application.",
-	Args:      cobra.MatchAll(cobra.ExactArgs(1), validGenerateArgs()), // Expect exactly one argument: either "certs" or "config"
-	ValidArgs: []string{"certs", "config"},                             // Restrict arguments to these options
+	Use:       "generate [certs|config|admin-user]",
+	Short:     "Generate certs or config files or an  admin-user",
+	Long:      "Generate certificates, configuration files or an admin-user required by the application.",
+	Args:      cobra.MatchAll(cobra.ExactArgs(1), validGenerateArgs()),
+	ValidArgs: []string{"certs", "config", "admin"},
 	Run: func(cmd *cobra.Command, args []string) {
 		switch args[0] {
 		case "certs":
@@ -73,21 +79,28 @@ var generateCmd = &cobra.Command{
 			}
 		case "config":
 			config.CreateDefaultConfig(config.Config)
+		case "admin":
+			err := generateAdmin()
+			if err != nil {
+				// FIXME: Error Handling
+				// FIXME: Logging! Because: Invocation of admin creation should be logged!
+				panic(err)
+			}
 		default:
-			fmt.Println("Invalid argument. Use 'certs' or 'config'.")
+			fmt.Println("Invalid argument. Use 'certs' or 'config' or 'admin'.")
 		}
 	},
 }
 
 func validGenerateArgs() cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
-		validArgs := []string{"certs", "config"}
+		validArgs := []string{"certs", "config", "admin"}
 		for _, valid := range validArgs {
 			if args[0] == valid {
 				return nil
 			}
 		}
-		return fmt.Errorf("invalid argument: '%s'. Must be one of 'certs' or 'config'", args[0])
+		return fmt.Errorf("invalid argument: '%s'. Must be one of 'certs' or 'config' or 'user'", args[0])
 	}
 }
 
@@ -98,8 +111,51 @@ func init() {
 	rootCmd.AddCommand(restartCmd)
 	rootCmd.AddCommand(stopCmd)
 
-	// Initialize Viper config
-	cobra.OnInitialize(initConfig)
+	initConfig()
+	err := db.InitDB()
+	if err != nil {
+		// FIXME: error Handling
+		// FIXME: LOGGING!
+		panic(err)
+	}
+}
+
+// generate admin for login and Setup
+func generateAdmin() error {
+	adminPw, err := password.Generate(64, 10, 10, false, false)
+	if err != nil {
+		// FIXME: error Handling
+		panic(err)
+	}
+
+	// Admin Data
+	TemporalAdmin := structs.User{
+		UserID:       uuid.New(),
+		Username:     "admin",
+		Password:     adminPw,
+		Groups:       []string{"Admin", "StorageAdmin", "Audit"},
+		CreationTime: time.Now(),
+		UpdateTime:   time.Now(),
+		ApiKeys:      nil,
+	}
+
+	// Insert Admin
+	AdminInsertionData, err := db.DB.Create("user", TemporalAdmin)
+	if err != nil {
+		panic(err)
+	}
+
+	// Unmarshal data
+	var createdUser structs.User
+	err = surrealdb.Unmarshal(AdminInsertionData, &createdUser)
+	if err != nil {
+		pp.Println(AdminInsertionData)
+		panic(err)
+	}
+
+	pp.Println(createdUser.Username)
+	pp.Println(createdUser.Password)
+	return nil
 }
 
 // initConfig initializes Viper and configures the application

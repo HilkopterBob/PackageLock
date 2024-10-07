@@ -1,23 +1,49 @@
 package handler
 
 import (
+	"encoding/base64"
+	"packagelock/db"
 	"packagelock/structs"
-	"strconv"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/surrealdb/surrealdb.go"
 )
 
 // GetAgentByID filters a slice of Agents for a matching Agent.Agent_ID.
 // It returns a JSON response with fiber.StatusOK or fiber.StatusNotFound.
 func GetAgentByID(c *fiber.Ctx) error {
-	id := c.Params("id")
+	// ID is an URL slice. Its a URL-Save base64 encoded UUID
+	urlIDBytes, err := base64.RawURLEncoding.DecodeString(c.Params("id"))
+	if err != nil {
+		// FIXME: error handling
+		panic(err)
+	}
 
-	for _, a := range Agents {
-		if strconv.Itoa(a.Host_ID) == id {
-			return c.Status(fiber.StatusOK).JSON(a)
+	urlIDString := string(urlIDBytes)
+
+	agents, err := db.DB.Select("agents")
+	if err != nil {
+		// FIXME: Error handling
+		panic(err)
+	}
+
+	var agentsSlice []structs.Agent
+	err = surrealdb.Unmarshal(agents, &agentsSlice)
+	if err != nil {
+		// FIXME: Error handling
+		panic(err)
+	}
+
+	var requestedAgentByID structs.Agent
+	for _, agent := range agentsSlice {
+		if agent.AgentID.String() == urlIDString {
+			requestedAgentByID = agent
+			// FIXME: logging
+			return c.Status(fiber.StatusOK).JSON(requestedAgentByID)
 		}
 	}
-	return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "no agent under that id"})
+	return c.Status(fiber.StatusNotFound).JSON(nil)
+	// FIXME: logging
 }
 
 // RegisterAgent handles POST requests to register a new agent.
@@ -33,38 +59,79 @@ func RegisterAgent(c *fiber.Ctx) error {
 		})
 	}
 
-	// Add new agent to the Agents slice
-	Agents = append(Agents, newAgent)
-
+	newAgentInsertionData, err := db.DB.Create("agents", newAgent)
+	if err != nil {
+		// FIXME: logging
+		// FIXME: error handling
+		panic(err)
+	}
 	// Respond with the newly created agent
-	return c.Status(fiber.StatusCreated).JSON(newAgent)
+	return c.Status(fiber.StatusCreated).JSON(newAgentInsertionData)
 }
 
 // GetHostByAgentID finds the host for a given agent ID.
 func GetHostByAgentID(c *fiber.Ctx) error {
-	var agentByID structs.Agent
+	urlIDBytes, err := base64.RawURLEncoding.DecodeString(c.Params("id"))
+	if err != nil {
+		// FIXME: error handling
+		panic(err)
+	}
 
-	// Get the value from /agent/:id/host
-	id := c.Params("id")
+	urlIDString := string(urlIDBytes)
 
-	// Find the agent by the URL-ID
-	for _, a := range Agents {
-		if strconv.Itoa(a.Host_ID) == id {
-			agentByID = a
-			break
+	agents, err := db.DB.Select("agents")
+	if err != nil {
+		// FIXME: Error handling
+		panic(err)
+	}
+
+	var agentsSlice []structs.Agent
+	err = surrealdb.Unmarshal(agents, &agentsSlice)
+	if err != nil {
+		// FIXME: Error handling
+		panic(err)
+	}
+
+	var requestedAgentByID structs.Agent
+	for _, agent := range agentsSlice {
+		if agent.AgentID.String() == urlIDString {
+			requestedAgentByID = agent
 		}
 	}
 
-	if agentByID.Agent_ID == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "no agent under that id"})
+	if requestedAgentByID.ID == "" {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": "Agent not found",
+		})
 	}
 
-	// Find the host with the same id as the agent
-	for _, host := range Hosts {
-		if host.ID == agentByID.Agent_ID {
-			return c.Status(fiber.StatusOK).JSON(host)
+	hosts, err := db.DB.Select("hosts")
+	if err != nil {
+		// FIXME: Logging!
+		// FIXME: Error handling!
+		panic(err)
+	}
+
+	var hostsSlice []structs.Host
+	err = surrealdb.Unmarshal(hosts, &hostsSlice)
+	if err != nil {
+		// FIXME: errorhandling
+		// FIXME: errorhandling
+		panic(err)
+	}
+
+	var requestedHostByAgentID structs.Host
+	for _, host := range hostsSlice {
+		if host.HostID == requestedAgentByID.HostID {
+			requestedHostByAgentID = host
+			// FIXME: Logging
+			return c.Status(fiber.StatusOK).JSON(requestedHostByAgentID)
 		}
 	}
 
-	return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "no host found for that agent"})
+	// IF HERE:
+	// No Host or No agent found
+	return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+		"error": "Agent Found, but no Host is associated... Thats Weird.",
+	})
 }
