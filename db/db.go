@@ -32,8 +32,6 @@ func InitDB() error {
 		"user": dbUsername,
 		"pass": dbPasswd,
 	}); err != nil {
-		// FIXME: Logging of wrong username and maybe SHA-PASSWD?
-
 		errorMessage := fmt.Sprintf(` Couldn't connect to DB! Got: '%s'.
 		1. Check the config for a wrong DB-Username/Password (Currently: %s/<read the config!>)
 		3. Consult the PackageLock Doc's! 🚀
@@ -53,7 +51,7 @@ func InitDB() error {
 	return nil
 }
 
-// If you use this, fix it!
+// INFO:  If you use this, fix it!
 func Select(tablename string, SliceOfType interface{}) error {
 	transaction, err := DB.Select(tablename)
 	if err != nil {
