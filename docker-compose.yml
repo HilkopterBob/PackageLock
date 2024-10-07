@@ -1,0 +1,19 @@
+version: "3.8" # You can use any version you prefer
+services:
+  packagelock:
+    image: hilkopterbob/packagelock:unstable-db-integration # Replace `latest` with the version if needed
+    container_name: packagelock_container # Optional: Name the container
+    ports:
+      - "8080:8080" # Map your container's port to the host. Change if necessary
+    volumes:
+      - ./packagelock/certs:/app/certs # Mount certs to /app/certs
+      - ./packagelock/config:/app/config # Mount config to /app/config
+    restart: always # Automatically restart the container if it stops
+
+  packagelock-db:
+    image: surrealdb/surrealdb:v2.0.3
+    command: start -A --auth --user root --pass pass file:/db/database
+    volumes:
+      - ./packagelock/db:/db # Mount db directory to the database service
+    ports:
+      - ${DATABASE_PORT}:8000
