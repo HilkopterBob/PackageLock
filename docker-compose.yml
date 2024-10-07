@@ -6,7 +6,14 @@ services:
     ports:
       - "8080:8080" # Map your container's port to the host. Change if necessary
     volumes:
-      - ./data/certs:/app/certs
-      - ./data/config.yml:/app/config.yaml
+      - ./packagelock/certs:/app/certs # Mount certs to /app/certs
+      - ./packagelock/config:/app/config # Mount config to /app/config
     restart: always # Automatically restart the container if it stops
 
+  packagelock-db:
+    image: surrealdb/surrealdb:v2.0.3
+    command: start -A --auth --user root --pass pass file:/db/database
+    volumes:
+      - ./packagelock/db:/db # Mount db directory to the database service
+    ports:
+      - ${DATABASE_PORT}:8000
