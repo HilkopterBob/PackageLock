@@ -140,16 +140,16 @@ func generateAdmin() error {
 	}
 
 	// Insert Admin
-	AdminInsertionData, err := db.DB.Create("user", TemporalAdmin)
+	adminInsertionData, err := db.DB.Create("user", TemporalAdmin)
 	if err != nil {
 		panic(err)
 	}
 
 	// Unmarshal data
 	var createdUser structs.User
-	err = surrealdb.Unmarshal(AdminInsertionData, &createdUser)
+	err = surrealdb.Unmarshal(adminInsertionData, &createdUser)
 	if err != nil {
-		pp.Println(AdminInsertionData)
+		pp.Println(adminInsertionData)
 		panic(err)
 	}
 
@@ -196,7 +196,7 @@ func startServer() {
 	// Start the server in a goroutine
 	go func() {
 		for {
-			router := server.AddRoutes(config.Config)
+			Router := server.AddRoutes(config.Config)
 
 			// Setup server address from config
 			serverAddr := config.Config.GetString("network.fqdn") + ":" + config.Config.GetString("network.port")
@@ -206,7 +206,7 @@ func startServer() {
 				if config.Config.GetBool("network.ssl") {
 					fmt.Printf("Starting Fiber HTTPS server at https://%s...\n", serverAddr)
 					err := server.ListenAndServeTLS(
-						router.Router,
+						Router.Router,
 						config.Config.GetString("network.ssl-config.certificatepath"),
 						config.Config.GetString("network.ssl-config.privatekeypath"),
 						serverAddr)
@@ -215,7 +215,7 @@ func startServer() {
 					}
 				} else {
 					fmt.Printf("Starting Fiber server at %s...\n", serverAddr)
-					if err := router.Router.Listen(serverAddr); err != nil {
+					if err := Router.Router.Listen(serverAddr); err != nil {
 						fmt.Printf("Server error: %s\n", err)
 					}
 				}
@@ -227,7 +227,7 @@ func startServer() {
 				fmt.Println("Restarting Fiber server...")
 				_, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
-				if err := router.Router.Shutdown(); err != nil {
+				if err := Router.Router.Shutdown(); err != nil {
 					fmt.Printf("Server shutdown failed: %v\n", err)
 				} else {
 					fmt.Println("Server stopped.")
@@ -238,7 +238,7 @@ func startServer() {
 				fmt.Println("Shutting down Fiber server...")
 				_, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
-				if err := router.Router.Shutdown(); err != nil {
+				if err := Router.Router.Shutdown(); err != nil {
 					fmt.Printf("Server shutdown failed: %v\n", err)
 				} else {
 					fmt.Println("Server stopped gracefully.")
