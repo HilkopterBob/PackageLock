@@ -6,9 +6,9 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"fmt"
 	"math/big"
 	"os"
+	"packagelock/logger"
 	"time"
 )
 
@@ -17,7 +17,8 @@ func CreateSelfSignedCert(certFile, keyFile string) error {
 	// Generate a private key using RSA (2048-bit key size)
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		return fmt.Errorf("failed to generate private key: %v", err)
+		logger.Logger.Warnf("failed to generate private key: %v", err)
+		return err
 	}
 
 	// Create a certificate template
@@ -26,7 +27,8 @@ func CreateSelfSignedCert(certFile, keyFile string) error {
 
 	serialNumber, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
 	if err != nil {
-		return fmt.Errorf("failed to generate serial number: %v", err)
+		logger.Logger.Warnf("failed to generate serial number: %v", err)
+		return err
 	}
 
 	template := x509.Certificate{
@@ -44,49 +46,55 @@ func CreateSelfSignedCert(certFile, keyFile string) error {
 	// Generate a self-signed certificate using the RSA private key
 	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
 	if err != nil {
-		return fmt.Errorf("failed to create certificate: %v", err)
+		logger.Logger.Warnf("failed to create certificate: %v", err)
+		return err
 	}
 
 	// Save the certificate to certFile
 	certOut, err := os.Create(certFile)
 	if err != nil {
-		return fmt.Errorf("failed to open cert.pem for writing: %v", err)
+		logger.Logger.Warnf("failed to open cert.pem for writing: %v", err)
 	}
 
 	// INFO: If the parrent throws an err and this defer is called
 	// and fileOut.Close() throws an error to, the original error will be overwritten.
 	defer func() {
-		err := certOut.Close()
-		if err != nil {
-			panic(err)
+		deferredErr := certOut.Close()
+		if deferredErr != nil {
+			logger.Logger.Warnf("Cannot close Cert File, got: %s", deferredErr)
+			return
 		}
 	}()
 
 	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: certDER}); err != nil {
-		return fmt.Errorf("failed to write certificate to cert.pem: %v", err)
+		logger.Logger.Warnf("failed to write certificate to cert.pem: %v", err)
+		return err
 	}
 
 	// Save the RSA private key to keyFile
 	keyOut, err := os.Create(keyFile)
 	if err != nil {
-		return fmt.Errorf("failed to open key.pem for writing: %v", err)
+		logger.Logger.Warnf("failed to open key.pem for writing: %v", err)
+		return err
 	}
 
 	// INFO: If the parrent throws an err and this defer is called
 	// and fileOut.Close() throws an error to, the original error will be overwritten.
 	defer func() {
-		err := keyOut.Close()
-		if err != nil {
-			panic(err)
+		deferredErr := keyOut.Close()
+		if deferredErr != nil {
+			logger.Logger.Warnf("Cannot close Cert File, got: %s", deferredErr)
+			return
 		}
 	}()
 
 	// Marshal the RSA private key
 	privBytes := x509.MarshalPKCS1PrivateKey(priv)
 	if err := pem.Encode(keyOut, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: privBytes}); err != nil {
-		return fmt.Errorf("failed to write private key to key.pem: %v", err)
+		logger.Logger.Warnf("failed to write private key to key.pem: %v", err)
+		return err
 	}
 
-	fmt.Println("Successfully created self-signed RSA certificate and private key.")
+	logger.Logger.Infof("Successfully created self-signed RSA certificate and private key.\n%s \n%s", certFile, keyFile)
 	return nil
 }

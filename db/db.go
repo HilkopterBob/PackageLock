@@ -1,8 +1,8 @@
 package db
 
 import (
-	"fmt"
 	"packagelock/config"
+	"packagelock/logger"
 
 	"github.com/surrealdb/surrealdb.go"
 )
@@ -17,41 +17,38 @@ func InitDB() error {
 
 	db, err := surrealdb.New("ws://" + dbAddress + ":" + dbPort + "/rpc")
 	if err != nil {
-		errorMessage := fmt.Sprintf(` Couldn't connect to DB! Got: '%s'.
+		logger.Logger.Errorf(` Couldn't connect to DB! Got: '%s'.
 		1. Check the config for a wrong Address/Port (Currently: %s:%s)
 		2. Check if the DB is reachable (eg. a Ping). Check the Firewalls if there.
 		3. Consult the PackageLock Doc's! 🚀
 		Golang Trace Logs:
 			`, err.Error(), dbAddress, dbPort)
-		fmt.Println(errorMessage)
-		panic(err)
 	}
 
 	if _, err = db.Signin(map[string]interface{}{
-		// TODO: get user&password from Conf
 		"user": dbUsername,
 		"pass": dbPasswd,
 	}); err != nil {
-		errorMessage := fmt.Sprintf(` Couldn't connect to DB! Got: '%s'.
+		logger.Logger.Errorf(` Couldn't connect to DB! Got: '%s'.
 		1. Check the config for a wrong DB-Username/Password (Currently: %s/<read the config!>)
 		3. Consult the PackageLock Doc's! 🚀
 		Golang Trace Logs:
 			`, err.Error(), dbUsername)
-		fmt.Println(errorMessage)
-		panic(err)
 	}
 
 	if _, err = db.Use("PackageLock", "db1.0"); err != nil {
 		// No error handling possible, as we need to use this db
-		panic(err)
+		logger.Logger.Panicf("Couldn't Use 'PackageLock' Namespace and 'db1.0' Database. Got: %s", err)
 	}
 
 	DB = db
 
+	logger.Logger.Infof("Successfully Connected to DB, at: %s:%s", dbAddress, dbPort)
 	return nil
 }
 
 // INFO:  If you use this, fix it!
+// INFO: 	And add logging/error handling
 func Select(tablename string, SliceOfType interface{}) error {
 	transaction, err := DB.Select(tablename)
 	if err != nil {

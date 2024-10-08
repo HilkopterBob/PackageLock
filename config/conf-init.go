@@ -2,8 +2,8 @@ package config
 
 import (
 	"bytes"
-	"fmt"
 	"io"
+	"packagelock/logger"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
@@ -43,17 +43,18 @@ func StartViper(config ConfigProvider) ConfigProvider {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			CreateDefaultConfig(config)
 			newConfig := StartViper(config)
+			logger.Logger.Info("No Config found, created default Config.")
 			return newConfig
 		} else {
-			panic(fmt.Errorf("fatal error config file: %w", err))
+			logger.Logger.Panicf("Cannot create default config, got: %s", err)
 		}
 	}
 
+	logger.Logger.Info("Successfully Created Config Manager.")
 	return config
 }
 
 func CreateDefaultConfig(config ConfigProvider) {
-	// TODO: Add default config
 	yamlExample := []byte(`
 general:
   debug: true
@@ -75,11 +76,11 @@ network:
 
 	err := config.ReadConfig(bytes.NewBuffer(yamlExample))
 	if err != nil {
-		panic(fmt.Errorf("fatal error while reading config file: %w", err))
+		logger.Logger.Panicf("Incompatible Default Config! Got: %s", err)
 	}
 
 	errWrite := config.WriteConfigAs("./config.yaml")
 	if errWrite != nil {
-		panic(fmt.Errorf("fatal error while writing config file: %w", err))
+		logger.Logger.Panicf("Cannot write config file, got: %s", errWrite)
 	}
 }
