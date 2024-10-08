@@ -4,3 +4,4 @@ config.yaml
 config.yml
 packagelock.pid
 packagelock/**
+logs/**
