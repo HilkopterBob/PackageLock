@@ -1,6 +1,9 @@
 package logger
 
 import (
+	"os"
+
+	"github.com/k0kubun/pp"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -9,7 +12,11 @@ var Logger *zap.SugaredLogger
 
 // InitLogger initializes the zap.Logger once and returns the instance.
 func InitLogger() (*zap.SugaredLogger, error) {
-	var err error
+	err := os.MkdirAll("logs/", os.ModePerm)
+	if err != nil {
+		pp.Printf("Couldn't create 'logs' directory. Got: %s", err)
+		panic(err)
+	}
 
 	// Ensure the logger is initialized only once
 	loggerConfig := zap.Config{
