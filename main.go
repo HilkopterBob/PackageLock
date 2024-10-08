@@ -8,6 +8,7 @@ import (
 	"packagelock/certs"
 	"packagelock/config"
 	"packagelock/db"
+	"packagelock/logger"
 	"packagelock/server"
 	"packagelock/structs"
 	"strconv"
@@ -76,15 +77,14 @@ var generateCmd = &cobra.Command{
 				config.Config.GetString("network.ssl-config.privatekeypath"))
 			if err != nil {
 				fmt.Println("There was an error generating the self signed certs: %w", err)
+				logger.Logger.Warnf("There was an error generating the self signed certs: %s", err)
 			}
 		case "config":
 			config.CreateDefaultConfig(config.Config)
 		case "admin":
 			err := generateAdmin()
 			if err != nil {
-				// FIXME: Error Handling
-				// FIXME: Logging! Because: Invocation of admin creation should be logged!
-				panic(err)
+				logger.Logger.Panicf("Failed to generate default admin, got: %s", err)
 			}
 		default:
 			fmt.Println("Invalid argument. Use 'certs' or 'config' or 'admin'.")
@@ -111,12 +111,18 @@ func init() {
 	rootCmd.AddCommand(restartCmd)
 	rootCmd.AddCommand(stopCmd)
 
+	// Declare the Logger into global logger.Logger
+	var loggerError error
+	logger.Logger, loggerError = logger.InitLogger()
+	if loggerError != nil {
+		// INFO: Essential APP-Part, so crash out asap
+		panic(loggerError)
+	}
+
 	initConfig()
 	err := db.InitDB()
 	if err != nil {
-		// FIXME: error Handling
-		// FIXME: LOGGING!
-		panic(err)
+		logger.Logger.Panicf("Got error from db.InitDB: %s", err)
 	}
 }
 
@@ -124,8 +130,7 @@ func init() {
 func generateAdmin() error {
 	adminPw, err := password.Generate(64, 10, 10, false, false)
 	if err != nil {
-		// FIXME: error Handling
-		panic(err)
+		logger.Logger.Panicf("Got error while generating ADmin Password: %s", err)
 	}
 
 	// Admin Data
@@ -142,15 +147,14 @@ func generateAdmin() error {
 	// Insert Admin
 	AdminInsertionData, err := db.DB.Create("user", TemporalAdmin)
 	if err != nil {
-		panic(err)
+		logger.Logger.Panicf("Got error while inserting Default Admin into DB: %s", err)
 	}
 
 	// Unmarshal data
 	var createdUser structs.User
 	err = surrealdb.Unmarshal(AdminInsertionData, &createdUser)
 	if err != nil {
-		pp.Println(AdminInsertionData)
-		panic(err)
+		logger.Logger.Panicf("Got error while querring Default Admin: %s", err)
 	}
 
 	pp.Println(createdUser.Username)
@@ -174,8 +178,7 @@ func initConfig() {
 			config.Config.GetString("network.ssl-config.certificatepath"),
 			config.Config.GetString("network.ssl-config.privatekeypath"))
 		if err != nil {
-			fmt.Printf("Error creating self-signed certificate: %v\n", err)
-			os.Exit(1)
+			logger.Logger.Panicf("Error creating self-signed certificate: %v\n", err)
 		}
 	}
 }
@@ -185,11 +188,13 @@ func startServer() {
 	pid := os.Getpid()
 	err := os.WriteFile("packagelock.pid", []byte(strconv.Itoa(pid)), 0644)
 	if err != nil {
-		fmt.Printf("Failed to write PID file: %v\n", err)
+		logger.Logger.Panicf("Failed to write PID file: %v\n", err)
 		return
 	}
 
-	fmt.Println(config.Config.AllSettings())
+	if config.Config.GetString("general.production") == "false" {
+		logger.Logger.Debug(config.Config.AllSettings())
+	}
 
 	signal.Notify(quitChan, os.Interrupt, syscall.SIGTERM)
 
@@ -204,19 +209,23 @@ func startServer() {
 			// Start server based on SSL config
 			go func() {
 				if config.Config.GetBool("network.ssl") {
-					fmt.Printf("Starting Fiber HTTPS server at https://%s...\n", serverAddr)
+
+					logger.Logger.Infof("Starting Fiber HTTPS server at https://%s...\n", serverAddr)
+
 					err := server.ListenAndServeTLS(
 						router.Router,
 						config.Config.GetString("network.ssl-config.certificatepath"),
 						config.Config.GetString("network.ssl-config.privatekeypath"),
 						serverAddr)
 					if err != nil {
-						fmt.Printf("Server error: %s\n", err)
+						logger.Logger.Panicf("Server error: %s\n", err)
 					}
 				} else {
-					fmt.Printf("Starting Fiber server at %s...\n", serverAddr)
+
+					logger.Logger.Infof("Starting Fiber server at %s...\n", serverAddr)
+
 					if err := router.Router.Listen(serverAddr); err != nil {
-						fmt.Printf("Server error: %s\n", err)
+						logger.Logger.Panicf("Server error: %s\n", err)
 					}
 				}
 			}()
@@ -224,24 +233,34 @@ func startServer() {
 			// Handle restart or quit signals
 			select {
 			case <-restartChan:
+
 				fmt.Println("Restarting Fiber server...")
+				logger.Logger.Info("Restarting Fiber server...")
+
 				_, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
 				if err := router.Router.Shutdown(); err != nil {
-					fmt.Printf("Server shutdown failed: %v\n", err)
+					logger.Logger.Warnf("Server shutdown failed: %v\n", err)
 				} else {
+
+					// TODO: add Reason for restart/Stoping
 					fmt.Println("Server stopped.")
+					logger.Logger.Info("Server stopped.")
 				}
 				startServer()
 
 			case <-quitChan:
+
+				// TODO: add Reason fro Stopping
 				fmt.Println("Shutting down Fiber server...")
+				logger.Logger.Info("Shutting down Fiber server...")
 				_, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
 				if err := router.Router.Shutdown(); err != nil {
-					fmt.Printf("Server shutdown failed: %v\n", err)
+					logger.Logger.Warnf("Server shutdown failed: %v\n", err)
 				} else {
 					fmt.Println("Server stopped gracefully.")
+					logger.Logger.Info("Server stopped gracefully.")
 				}
 				return
 			}
@@ -250,7 +269,8 @@ func startServer() {
 
 	// Watch for config changes
 	config.Config.OnConfigChange(func(e fsnotify.Event) {
-		fmt.Println("Config file changed:", e.Name)
+		logger.Logger.Infof("Config file changed:", e.Name)
+		logger.Logger.Info("Restarting to apply changes...")
 		fmt.Println("Restarting to apply changes...")
 		restartChan <- struct{}{}
 	})
@@ -258,12 +278,14 @@ func startServer() {
 
 	// Block until quit signal is received
 	<-quitChan
+	logger.Logger.Info("Main process exiting.")
 	fmt.Println("Main process exiting.")
 }
 
 func restartServer() {
 	stopServer()
 	fmt.Println("Restarting the Server...")
+	logger.Logger.Info("Restarting the Server...")
 	time.Sleep(5 * time.Second)
 	startServer()
 }
@@ -272,30 +294,32 @@ func stopServer() {
 	// Read the PID from the file using os.ReadFile
 	data, err := os.ReadFile("packagelock.pid")
 	if err != nil {
-		fmt.Printf("Could not read PID file: %v\n", err)
-		return
+		logger.Logger.Panicf("Could not read PID file: %v\n", err)
 	}
 
 	pid, err := strconv.Atoi(string(data))
 	if err != nil {
-		fmt.Printf("Invalid PID found in file: %v\n", err)
-		return
+		logger.Logger.Panicf("Invalid PID found in file: %v\n", err)
 	}
 
 	// Send SIGTERM to the process
 	fmt.Printf("Stopping the server with PID: %d\n", pid)
+	logger.Logger.Infof("Stopping the server with PID: %d\n", pid)
 	err = syscall.Kill(pid, syscall.SIGTERM)
 	if err != nil {
-		fmt.Printf("Failed to stop the server: %v\n", err)
+		logger.Logger.Warn("Failed to stop the server: %v\n", err)
+		return
+	}
+
+	fmt.Println("Server stopped.")
+	logger.Logger.Info("Server stopped.")
+	// After successful stop, remove the PID file
+	err = os.Remove("packagelock.pid")
+	if err != nil {
+		logger.Logger.Warnf("Failed to remove PID file: %v\n", err)
 	} else {
-		fmt.Println("Server stopped.")
-		// After successful stop, remove the PID file
-		err = os.Remove("packagelock.pid")
-		if err != nil {
-			fmt.Printf("Failed to remove PID file: %v\n", err)
-		} else {
-			fmt.Println("PID file removed successfully.")
-		}
+		fmt.Println("PID file removed successfully.")
+		logger.Logger.Info("PID file removed successfully.")
 	}
 }
 
