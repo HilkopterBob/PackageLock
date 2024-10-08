@@ -42,9 +42,9 @@ func StartViper(config ConfigProvider) ConfigProvider {
 	if err := config.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			CreateDefaultConfig(config)
-			new_config := StartViper(config)
+			newConfig := StartViper(config)
 			logger.Logger.Info("No Config found, created default Config.")
-			return new_config
+			return newConfig
 		} else {
 			logger.Logger.Panicf("Cannot create default config, got: %s", err)
 		}
@@ -79,8 +79,8 @@ network:
 		logger.Logger.Panicf("Incompatible Default Config! Got: %s", err)
 	}
 
-	err_write := config.WriteConfigAs("./config.yaml")
-	if err_write != nil {
-		logger.Logger.Panicf("Cannot write config file, got: %s", err)
+	errWrite := config.WriteConfigAs("./config.yaml")
+	if errWrite != nil {
+		logger.Logger.Panicf("Cannot write config file, got: %s", errWrite)
 	}
 }

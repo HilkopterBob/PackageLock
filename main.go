@@ -145,14 +145,14 @@ func generateAdmin() error {
 	}
 
 	// Insert Admin
-	AdminInsertionData, err := db.DB.Create("user", TemporalAdmin)
+	adminInsertionData, err := db.DB.Create("user", TemporalAdmin)
 	if err != nil {
 		logger.Logger.Panicf("Got error while inserting Default Admin into DB: %s", err)
 	}
 
 	// Unmarshal data
 	var createdUser structs.User
-	err = surrealdb.Unmarshal(AdminInsertionData, &createdUser)
+	err = surrealdb.Unmarshal(adminInsertionData, &createdUser)
 	if err != nil {
 		logger.Logger.Panicf("Got error while querring Default Admin: %s", err)
 	}
@@ -201,7 +201,7 @@ func startServer() {
 	// Start the server in a goroutine
 	go func() {
 		for {
-			router := server.AddRoutes(config.Config)
+			Router := server.AddRoutes(config.Config)
 
 			// Setup server address from config
 			serverAddr := config.Config.GetString("network.fqdn") + ":" + config.Config.GetString("network.port")
@@ -213,7 +213,7 @@ func startServer() {
 					logger.Logger.Infof("Starting Fiber HTTPS server at https://%s...\n", serverAddr)
 
 					err := server.ListenAndServeTLS(
-						router.Router,
+						Router.Router,
 						config.Config.GetString("network.ssl-config.certificatepath"),
 						config.Config.GetString("network.ssl-config.privatekeypath"),
 						serverAddr)
@@ -221,10 +221,9 @@ func startServer() {
 						logger.Logger.Panicf("Server error: %s\n", err)
 					}
 				} else {
-
 					logger.Logger.Infof("Starting Fiber server at %s...\n", serverAddr)
 
-					if err := router.Router.Listen(serverAddr); err != nil {
+					if err := Router.Router.Listen(serverAddr); err != nil {
 						logger.Logger.Panicf("Server error: %s\n", err)
 					}
 				}
@@ -239,14 +238,15 @@ func startServer() {
 
 				_, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
-				if err := router.Router.Shutdown(); err != nil {
+        
+				if err := Router.Router.Shutdown(); err != nil {
 					logger.Logger.Warnf("Server shutdown failed: %v\n", err)
 				} else {
-
 					// TODO: add Reason for restart/Stoping
 					fmt.Println("Server stopped.")
 					logger.Logger.Info("Server stopped.")
 				}
+        
 				startServer()
 
 			case <-quitChan:
@@ -256,7 +256,8 @@ func startServer() {
 				logger.Logger.Info("Shutting down Fiber server...")
 				_, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
-				if err := router.Router.Shutdown(); err != nil {
+
+				if err := Router.Router.Shutdown(); err != nil {
 					logger.Logger.Warnf("Server shutdown failed: %v\n", err)
 				} else {
 					fmt.Println("Server stopped gracefully.")
