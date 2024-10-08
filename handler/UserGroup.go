@@ -1,10 +1,10 @@
 package handler
 
 import (
-	"log"
 	"os"
 	"packagelock/config"
 	"packagelock/db"
+	"packagelock/logger"
 	"packagelock/structs"
 	"time"
 
@@ -23,6 +23,7 @@ func LoginHandler(c *fiber.Ctx) error {
 	// Cast POST
 	var loginReq LoginRequest
 	if err := c.BodyParser(&loginReq); err != nil {
+		logger.Logger.Debugf("Got invalid Login Request: %s", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Failed to parse request",
 		})
@@ -30,15 +31,15 @@ func LoginHandler(c *fiber.Ctx) error {
 
 	data, err := db.DB.Select("user")
 	if err != nil {
-		// FIXME: error handling
-		panic(err)
+		logger.Logger.Warnf("Got error while 'db.DB.Select('user')': %s \nSending 'StatusInternalServerError'", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(nil)
 	}
 
 	var UserTable []structs.User
 	err = surrealdb.Unmarshal(data, &UserTable)
 	if err != nil {
-		// FIXME: error handling
-		panic(err)
+		logger.Logger.Warnf("Got error while surrealdb.Unmarshal: %s \nSending 'StatusInternalServerError'", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(nil)
 	}
 
 	var authenticatedUser structs.User
@@ -46,7 +47,6 @@ func LoginHandler(c *fiber.Ctx) error {
 		// TODO: implement password hashing
 		if possibleUser.Username == loginReq.Username && possibleUser.Password == loginReq.Password {
 			authenticatedUser = possibleUser
-			// TODO: log token creation
 		}
 	}
 
@@ -60,15 +60,23 @@ func LoginHandler(c *fiber.Ctx) error {
 	// Sign and get the encoded token
 	keyData, err := os.ReadFile(config.Config.GetString("network.ssl-config.privatekeypath"))
 	if err != nil {
-		log.Fatal(err)
+		logger.Logger.Warnf("Can't read from Private Key File, got: %s\nPath: %s", err, config.Config.GetString("network.ssl-config.privatekeypath"))
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to generate token",
+		})
 	}
+
 	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(keyData)
 	if err != nil {
-		log.Fatal(err)
+		logger.Logger.Warnf("Can't sign with Private Key File, got: %s", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to generate token",
+		})
 	}
+
 	tokenString, err := token.SignedString(privateKey)
 	if err != nil {
-		// FIXME: error handling & maybe logging to?
+		logger.Logger.Warnf("Can't generate JWT, got: %s", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to generate token",
 		})
@@ -87,14 +95,16 @@ func LoginHandler(c *fiber.Ctx) error {
 
 	// Add the token to the user's APIToken slice
 	authenticatedUser.ApiKeys = append(authenticatedUser.ApiKeys, newJWT)
-
 	authenticatedUser.UpdateTime = time.Now()
 
 	_, err = db.DB.Update(authenticatedUser.ID, authenticatedUser)
 	if err != nil {
-		// FIXME: errorhandling
-		panic(err)
+		logger.Logger.Warnf("Can't update User entry in DB to append new JWT, got: %s", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to generate token",
+		})
 	}
 
+	logger.Logger.Infof("Successfully authenticated and authorized following User: %s", authenticatedUser.Username)
 	return c.JSON(newJWT)
 }
