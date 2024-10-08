@@ -1,0 +1,55 @@
+name: Automatic Release Workflow
+
+on:
+  push:
+    tags:
+      - '[0-9].[0-9].[0-9]'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+
+      - name: Set APP_VERSION
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION=${{ github.event.inputs.version }}
+          else
+            VERSION=${{ github.ref }}
+            VERSION=${VERSION#refs/tags/}
+          fi
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Build Go Application
+        run: |
+          APP_VERSION=${{ env.APP_VERSION }}
+          CGO_ENABLED=0 GOOS=linux go build -ldflags "-X 'main.AppVersion=$APP_VERSION'" -o /packagelock
+
+      - name: Create Release Archive
+        run: |
+          mkdir -p release
+          cp /packagelock ./release/packagelock
+          tar -czvf release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz -C release packagelock
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.APP_VERSION }}
+          release_name: "${{ env.APP_VERSION }}"
+          body: "Automated release of Version: ${{ env.APP_VERSION }}"
+          draft: false
+          prerelease: false
+          files: ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz
