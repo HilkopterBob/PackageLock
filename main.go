@@ -11,9 +11,12 @@ import (
 	"packagelock/logger"
 	"packagelock/server"
 	"packagelock/structs"
+	"packagelock/trc.tracer"
 	"strconv"
 	"syscall"
 	"time"
+
+	"go.opentelemetry.io/otel"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/google/uuid"
@@ -111,12 +114,39 @@ func init() {
 	rootCmd.AddCommand(restartCmd)
 	rootCmd.AddCommand(stopCmd)
 
+	tracingEnv := os.Getenv("PACKAGELOCK_ENABLE_TRACING")
+	pp.Println(tracingEnv)
+	if tracingEnv == "TRUE" {
+		// Declare the Tracer into global trc.Tracer
+		var tracerError error
+		trc.Tracer, tracerError = trc.InitTracer()
+		if tracerError != nil {
+			pp.Println("Couldn't Start Tracer! Exiting...")
+			pp.Println("[INFO:] To run PackageLock without tracing, disable it in config!")
+		}
+		defer func() { _ = trc.Tracer.Shutdown(context.Background()) }()
+		// Create a tracer
+		tracer := otel.Tracer("example-tracer")
+
+		// Start tracing
+		// INFO:
+		ctx, span := tracer.Start(context.Background(), "main-operation")
+		defer span.End()
+	}
+
+	pp.Println(ctx)
+
 	// Declare the Logger into global logger.Logger
 	var loggerError error
 	logger.Logger, loggerError = logger.InitLogger()
 	if loggerError != nil {
 		// INFO: Essential APP-Part, so crash out asap
 		panic(loggerError)
+	}
+
+	// INFO: if tracing enabled, print that to log!
+	if tracingEnv == "TRUE" {
+		logger.Logger.Info("tracing is activated. For better performance in Prod. disable Tracing.")
 	}
 
 	initConfig()
@@ -238,7 +268,7 @@ func startServer() {
 
 				_, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
-        
+
 				if err := Router.Router.Shutdown(); err != nil {
 					logger.Logger.Warnf("Server shutdown failed: %v\n", err)
 				} else {
@@ -246,7 +276,7 @@ func startServer() {
 					fmt.Println("Server stopped.")
 					logger.Logger.Info("Server stopped.")
 				}
-        
+
 				startServer()
 
 			case <-quitChan:
