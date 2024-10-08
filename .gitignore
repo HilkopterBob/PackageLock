@@ -3,3 +3,4 @@ certs/**
 config.yaml
 config.yml
 packagelock.pid
+packagelock/**

@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"context"
-	"fmt"
 	"packagelock/db"
 	"packagelock/structs"
 
@@ -15,19 +13,17 @@ func RegisterHost(c *fiber.Ctx) error {
 
 	// Parse the JSON request body into newHost
 	if err := c.BodyParser(&newHost); err != nil {
-		// TODO: Add logs
-		// TODO: Add error handling
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Cannot parse JSON",
 		})
 	}
 
-	coll := db.Client.Database("packagelock").Collection("hosts")
-	_, err := coll.InsertOne(context.Background(), newHost)
+	transaction, err := db.DB.Create("hosts", newHost)
 	if err != nil {
-		return fmt.Errorf("failed to add new Host to db: %w", err)
+		// FIXME: error handling
+		panic(err)
 	}
 
-	// Respond with the newly created agent
-	return c.Status(fiber.StatusCreated).JSON(newHost)
+	// FIXME: Logging!
+	return c.Status(fiber.StatusCreated).JSON(transaction)
 }

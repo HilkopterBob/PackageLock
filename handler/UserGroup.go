@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"log"
 	"os"
 	"packagelock/config"
@@ -11,7 +10,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
-	"go.mongodb.org/mongo-driver/bson"
+	"github.com/surrealdb/surrealdb.go"
 )
 
 func LoginHandler(c *fiber.Ctx) error {
@@ -29,29 +28,33 @@ func LoginHandler(c *fiber.Ctx) error {
 		})
 	}
 
-	// Create a Query Filter for DB
-	filter := bson.D{
-		{"username", loginReq.Username},
-		{"password", loginReq.Password},
-	}
-
-	// Creating Pointer to first filter Hit,
-	// extracting all hits and cast to slice
-	cursor, err := db.Client.Database("packagelock").Collection("users").Find(context.TODO(), filter)
+	data, err := db.DB.Select("user")
 	if err != nil {
-		return err
+		// FIXME: error handling
+		panic(err)
 	}
 
-	var result []structs.User
-	if err = cursor.All(context.TODO(), &result); err != nil {
+	var UserTable []structs.User
+	err = surrealdb.Unmarshal(data, &UserTable)
+	if err != nil {
+		// FIXME: error handling
 		panic(err)
+	}
+
+	var authenticatedUser structs.User
+	for _, possibleUser := range UserTable {
+		// TODO: implement password hashing
+		if possibleUser.Username == loginReq.Username && possibleUser.Password == loginReq.Password {
+			authenticatedUser = possibleUser
+			// TODO: log token creation
+		}
 	}
 
 	// create JWT
 	token := jwt.New(jwt.SigningMethodRS256)
 	claims := token.Claims.(jwt.MapClaims)
-	claims["username"] = result[0].Username
-	claims["userID"] = result[0].UserID
+	claims["username"] = authenticatedUser.Username
+	claims["userID"] = authenticatedUser.UserID
 	claims["exp"] = time.Now().Add(time.Hour * 72).Unix() // 3 days expiry
 
 	// Sign and get the encoded token
@@ -65,7 +68,7 @@ func LoginHandler(c *fiber.Ctx) error {
 	}
 	tokenString, err := token.SignedString(privateKey)
 	if err != nil {
-		log.Println("Failed to generate JWT token:", err)
+		// FIXME: error handling & maybe logging to?
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to generate token",
 		})
@@ -83,20 +86,14 @@ func LoginHandler(c *fiber.Ctx) error {
 	}
 
 	// Add the token to the user's APIToken slice
-	result[0].ApiKeys = append(result[0].ApiKeys, newJWT)
-	filter = bson.D{
-		{"userid", result[0].UserID},
-	}
-	result[0].UpdateTime = time.Now() // User last Update Now!
+	authenticatedUser.ApiKeys = append(authenticatedUser.ApiKeys, newJWT)
 
-	// Replace Old User Object with new One
-	replacement, err := bson.Marshal(result[0])
+	authenticatedUser.UpdateTime = time.Now()
+
+	_, err = db.DB.Update(authenticatedUser.ID, authenticatedUser)
 	if err != nil {
-		return err
-	}
-	_, err = db.Client.Database("packagelock").Collection("users").ReplaceOne(context.Background(), filter, replacement)
-	if err != nil {
-		return err
+		// FIXME: errorhandling
+		panic(err)
 	}
 
 	return c.JSON(newJWT)

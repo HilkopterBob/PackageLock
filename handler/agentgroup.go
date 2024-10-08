@@ -1,52 +1,50 @@
 package handler
 
 import (
-	"context"
-	"fmt"
+	"encoding/base64"
 	"packagelock/db"
 	"packagelock/structs"
-	"strconv"
 
 	"github.com/gofiber/fiber/v2"
-	"go.mongodb.org/mongo-driver/bson"
+	"github.com/surrealdb/surrealdb.go"
 )
 
 // GetAgentByID filters a slice of Agents for a matching Agent.Agent_ID.
 // It returns a JSON response with fiber.StatusOK or fiber.StatusNotFound.
 func GetAgentByID(c *fiber.Ctx) error {
 
-	id, err := strconv.Atoi(c.Query("id"))
+	// ID is an URL slice. Its a URL-Save base64 encoded UUID
+	urlIDBytes, err := base64.RawURLEncoding.DecodeString(c.Query("id"))
 	if err != nil {
-		fmt.Println(err)
-	}
-
-	filter := bson.D{
-		{"agent_id", id},
-	}
-
-	fmt.Println(filter)
-
-	AgentsCursor, err := db.Client.Database("packagelock").Collection("agents").Find(context.Background(), filter)
-	if err != nil {
-		// TODO: Logging
-		// TODO: Error handling
-		return err
-	}
-
-	fmt.Println(AgentsCursor)
-
-	var agents []structs.Agent
-	if err = AgentsCursor.All(context.Background(), &agents); err != nil {
+		// FIXME: error handling
 		panic(err)
 	}
 
-	fmt.Println(agents)
+	urlIDString := string(urlIDBytes)
 
-	if len(agents) <= 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "no agent under that id"})
+	agents, err := db.DB.Select("agents")
+	if err != nil {
+		// FIXME: Error handling
+		panic(err)
 	}
 
-	return c.Status(fiber.StatusOK).JSON(agents)
+	var agentsSlice []structs.Agent
+	err = surrealdb.Unmarshal(agents, &agentsSlice)
+	if err != nil {
+		// FIXME: Error handling
+		panic(err)
+	}
+
+	var requestedAgentByID structs.Agent
+	for _, agent := range agentsSlice {
+		if agent.AgentID.String() == urlIDString {
+			requestedAgentByID = agent
+			// FIXME: logging
+			return c.Status(fiber.StatusOK).JSON(requestedAgentByID)
+		}
+	}
+	return c.Status(fiber.StatusNotFound).JSON(nil)
+	// FIXME: logging
 }
 
 // RegisterAgent handles POST requests to register a new agent.
@@ -62,36 +60,38 @@ func RegisterAgent(c *fiber.Ctx) error {
 		})
 	}
 
-	coll := db.Client.Database("packagelock").Collection("agents")
-	_, err := coll.InsertOne(context.Background(), newAgent)
+	newAgentInsertionData, err := db.DB.Create("agents", newAgent)
 	if err != nil {
-		return fmt.Errorf("failed to add new Agent to db: %w", err)
+		// FIXME: logging
+		// FIXME: error handling
+		panic(err)
 	}
-
 	// Respond with the newly created agent
-	return c.Status(fiber.StatusCreated).JSON(newAgent)
+	return c.Status(fiber.StatusCreated).JSON(newAgentInsertionData)
 }
 
 // GetHostByAgentID finds the host for a given agent ID.
 func GetHostByAgentID(c *fiber.Ctx) error {
 
 	id, err := strconv.Atoi(c.Query("id"))
+	urlIDBytes, err := base64.RawURLEncoding.DecodeString(c.Query("id"))
 	if err != nil {
-		fmt.Println(err)
-	}
-	filter := bson.D{
-		{"agent_id", id},
+		// FIXME: error handling
+		panic(err)
 	}
 
-	AgentsCursor, err := db.Client.Database("packagelock").Collection("agents").Find(context.Background(), filter)
+	urlIDString := string(urlIDBytes)
+
+	agents, err := db.DB.Select("agents")
 	if err != nil {
-		// TODO: Logging
-		// TODO: Error handling
-		return err
+		// FIXME: Error handling
+		panic(err)
 	}
 
-	var agents []structs.Agent
-	if err = AgentsCursor.All(context.TODO(), &agents); err != nil {
+	var agentsSlice []structs.Agent
+	err = surrealdb.Unmarshal(agents, &agentsSlice)
+	if err != nil {
+		// FIXME: Error handling
 		panic(err)
 	}
 
@@ -109,12 +109,46 @@ func GetHostByAgentID(c *fiber.Ctx) error {
 	HostsCursor, err := db.Client.Database("packagelock").Collection("hosts").Find(context.Background(), filter)
 	var hosts []structs.Agent
 	if err = HostsCursor.All(context.TODO(), &hosts); err != nil {
+	var requestedAgentByID structs.Agent
+	for _, agent := range agentsSlice {
+		if agent.AgentID.String() == urlIDString {
+			requestedAgentByID = agent
+		}
+	}
+
+	if requestedAgentByID.ID == "" {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": "Agent not found",
+		})
+	}
+
+	hosts, err := db.DB.Select("hosts")
+	if err != nil {
+		// FIXME: Logging!
+		// FIXME: Error handling!
 		panic(err)
 	}
 
-	if len(hosts) <= 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "no host with that id", "agent": agents[0]})
+	var hostsSlice []structs.Host
+	err = surrealdb.Unmarshal(hosts, &hostsSlice)
+	if err != nil {
+		// FIXME: errorhandling
+		// FIXME: errorhandling
+		panic(err)
 	}
 
-	return c.Status(fiber.StatusOK).JSON(hosts)
+	var requestedHostByAgentID structs.Host
+	for _, host := range hostsSlice {
+		if host.HostID == requestedAgentByID.HostID {
+			requestedHostByAgentID = host
+			// FIXME: Logging
+			return c.Status(fiber.StatusOK).JSON(requestedHostByAgentID)
+		}
+	}
+
+	// IF HERE:
+	// No Host or No agent found
+	return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+		"error": "Agent Found, but no Host is associated... Thats Weird.",
+	})
 }

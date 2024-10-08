@@ -11,6 +11,7 @@ import (
 )
 
 type Package struct {
+	ID             string `json:"id,omitempty"`
 	PackageID      uuid.UUID
 	PackageName    string
 	PackageVersion string
@@ -19,7 +20,22 @@ type Package struct {
 	UpdateTime     time.Time
 }
 
+type Network_Info struct {
+	Interfaces []string
+	Domain     string
+	DNSServers []string
+}
+
+type Interface struct {
+	Name      string
+	IpAddr    string
+	Gateway   string
+	Netmask   string
+	LinkSpeed int
+	MacAddr   string
+}
 type Package_Manager struct {
+	ID                 string `json:"id,omitempty"`
 	PackageManagerName string
 	PackageRepos       []string // A Slice containing all Repository Links.
 	CreationTime       time.Time
@@ -27,24 +43,31 @@ type Package_Manager struct {
 }
 
 type Host struct {
-	// TODO: support different linux distros
-	HostName       string // FQDN
-	CostID         int
+	ID             string `json:"id,omitempty"`
+	Hostname       string // FQDN
+	HostID         uuid.UUID
 	FQDN           string
-	NetworkInfo    map[string]string //	keys: InterfaceName, IPAddress, MacAddress
+	NetworkInfo    map[string]string //	keys: InterfaceName, IPAddress/Net, MacAddress
 	Distro         string
 	Arch           string
 	PackageManager Package_Manager
+	Packages       []uuid.UUID
+	CreationTime   time.Time
+	UpdateTime     time.Time
 }
 
 type Agent struct {
-	AgentName   string
-	AgentSecret string // a secret for encryption
-	HostID      int
-	AgentID     int
+	ID           string `json:"id,omitempty"`
+	AgentName    string
+	AgentSecret  string // a secret for encryption
+	HostID       uuid.UUID
+	AgentID      uuid.UUID
+	CreationTime time.Time
+	UpdateTime   time.Time
 }
 
 type ApiKey struct {
+	ID               string `json:"id,omitempty"`
 	KeyValue         string
 	Description      string
 	AccessSeperation bool     // true means fine grained access control
@@ -54,6 +77,7 @@ type ApiKey struct {
 }
 
 type User struct {
+	ID           string `json:"id,omitempty"`
 	UserID       uuid.UUID
 	Username     string
 	Password     string
