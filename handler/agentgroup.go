@@ -14,7 +14,7 @@ import (
 // It returns a JSON response with fiber.StatusOK or fiber.StatusNotFound.
 func GetAgentByID(c *fiber.Ctx) error {
 	// ID is an URL slice. Its a URL-Save base64 encoded UUID
-	urlIDBytes, err := base64.RawURLEncoding.DecodeString(c.Params("id"))
+	urlIDBytes, err := base64.RawURLEncoding.DecodeString(c.Query("AgentID"))
 	if err != nil {
 		logger.Logger.Warnf("Can't parse AgentID from URL, got: %s", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -77,7 +77,7 @@ func RegisterAgent(c *fiber.Ctx) error {
 
 // GetHostByAgentID finds the host for a given agent ID.
 func GetHostByAgentID(c *fiber.Ctx) error {
-	urlIDBytes, err := base64.RawURLEncoding.DecodeString(c.Params("id"))
+	urlIDBytes, err := base64.RawURLEncoding.DecodeString(c.Query("AgentID"))
 	if err != nil {
 		logger.Logger.Warnf("Can't parse AgentID from URL, got: %s", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
