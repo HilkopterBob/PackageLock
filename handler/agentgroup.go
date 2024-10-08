@@ -50,7 +50,9 @@ func GetAgentByID(c *fiber.Ctx) error {
 	}
 
 	logger.Logger.Warnf("Got Request for agent with id: %s, which dosn't exist!", urlIDString)
-	return c.Status(fiber.StatusNotFound).JSON(nil)
+	return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+		"error": "Agent not found",
+	})
 }
 
 // RegisterAgent handles POST requests to register a new agent.
