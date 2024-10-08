@@ -42,8 +42,8 @@ func StartViper(config ConfigProvider) ConfigProvider {
 	if err := config.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			CreateDefaultConfig(config)
-			new_config := StartViper(config)
-			return new_config
+			newConfig := StartViper(config)
+			return newConfig
 		} else {
 			panic(fmt.Errorf("fatal error config file: %w", err))
 		}
@@ -78,8 +78,8 @@ network:
 		panic(fmt.Errorf("fatal error while reading config file: %w", err))
 	}
 
-	err_write := config.WriteConfigAs("./config.yaml")
-	if err_write != nil {
+	errWrite := config.WriteConfigAs("./config.yaml")
+	if errWrite != nil {
 		panic(fmt.Errorf("fatal error while writing config file: %w", err))
 	}
 }
