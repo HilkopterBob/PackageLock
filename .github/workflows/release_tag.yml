@@ -44,6 +44,7 @@ jobs:
           ls -l ./release
           ls -l ./release/packagelock
           tar -czvf release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz -C release packagelock
+          ls -l ./release
 
       - name: Get release URL
         id: get_release
