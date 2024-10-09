@@ -40,7 +40,7 @@ jobs:
       - name: Create Release Archive
         run: |
           mkdir -p release
-          cp ${{ github.workspace }}/packagelock ./release/packagelock
+          cp -r ${{ github.workspace }}/packagelock ./release/packagelock
           tar -czvf release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz -C release packagelock
 
       - name: Create GitHub Release
