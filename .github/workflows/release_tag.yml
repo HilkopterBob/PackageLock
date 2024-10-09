@@ -33,17 +33,17 @@ jobs:
 
       - name: Build Go Application
         run: |
-          mkdir -p ${{ github.workspace }}/bin
+          mkdir -p ${{ github.workspace }}/packagelock
           APP_VERSION=${{ env.APP_VERSION }}
-          CGO_ENABLED=0 GOOS=linux go build -ldflags "-X 'main.AppVersion=$APP_VERSION'" -o ${{ github.workspace }}/bin
+          CGO_ENABLED=0 GOOS=linux go build -ldflags "-X 'main.AppVersion=$APP_VERSION'" -o ${{ github.workspace }}/packagelock
 
       - name: Create Release Archive
         run: |
-          mkdir -p ${{ github.workspace }}/release
-          cp -r ${{ github.workspace }}/bin ${{ github.workspace }}/release
-          ls -l ${{ github.workspace }}/bin
-          ls -l ${{ github.workspace }}/release
-          tar -czvf ${{ github.workspace }}/release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz -C release packagelock
+          mkdir -p release
+          cp -r ${{ github.workspace }}/packagelock ./release/packagelock
+          ls -l ./release
+          ls -l ./release/packagelock
+          tar -czvf release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz -C release packagelock
 
       - name: Get release URL
         id: get_release
