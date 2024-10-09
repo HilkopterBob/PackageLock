@@ -39,7 +39,7 @@ jobs:
 
       - name: Create Release Archive
         run: |
-          mkdir -p release
+          mkdir -p ${{ github.workspace }}/release
           cp -r ${{ github.workspace }}/bin ${{ github.workspace }}/release
           tar -czvf ${{ github.workspace }}/release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz -C release packagelock
 
