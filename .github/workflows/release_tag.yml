@@ -33,14 +33,14 @@ jobs:
 
       - name: Build Go Application
         run: |
-          mkdir -p packagelock
+          mkdir -p /github/workspace/packagelock
           APP_VERSION=${{ env.APP_VERSION }}
-          CGO_ENABLED=0 GOOS=linux go build -ldflags "-X 'main.AppVersion=$APP_VERSION'" -o /packagelock
+          CGO_ENABLED=0 GOOS=linux go build -ldflags "-X 'main.AppVersion=$APP_VERSION'" -o /github/workspace/packagelock
 
       - name: Create Release Archive
         run: |
           mkdir -p release
-          cp /packagelock ./release/packagelock
+          cp /github/workspace/packagelock ./release/packagelock
           tar -czvf release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz -C release packagelock
 
       - name: Create GitHub Release
