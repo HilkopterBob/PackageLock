@@ -41,6 +41,8 @@ jobs:
         run: |
           mkdir -p ${{ github.workspace }}/release
           cp -r ${{ github.workspace }}/bin ${{ github.workspace }}/release
+          ls -l ${{ github.workspace }}/bin
+          ls -l ${{ github.workspace }}/release
           tar -czvf ${{ github.workspace }}/release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz -C release packagelock
 
       - name: Get release URL
