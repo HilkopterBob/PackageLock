@@ -44,6 +44,7 @@ jobs:
           tar -czvf release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz -C release packagelock
 
       - name: Create GitHub Release
+        id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -53,4 +54,14 @@ jobs:
           body: "Automated release of Version: ${{ env.APP_VERSION }}"
           draft: false
           prerelease: false
-          files: ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz
+
+      - name: Upload Assets
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz
+          asset_name: packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz
+          asset_content_type: application/gzip
