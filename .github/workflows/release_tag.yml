@@ -46,8 +46,8 @@ jobs:
           tar -czvf release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz -C release packagelock
 
       - name: Calculate Checksum
-        run: |
-          md5sum ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz > ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz.md5
+        run: | 
+          md5sum ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz | cut -f 1 -d " " > ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz.md5
       - name: Get release URL
         id: get_release
         uses: bruceadams/get-release@v1.3.2
