@@ -3,7 +3,7 @@ name: Automatic Release Workflow
 on:
   push:
     tags:
-      - '[0-9].[0-9].[0-9]'
+      - '[0-9]+.[0-9]+.[0-9]+'
   workflow_dispatch:
     inputs:
       version:
@@ -43,18 +43,18 @@ jobs:
         run: |
           mkdir -p release
           cp -r ${{ github.workspace }}/packagelock ./release/packagelock
-          ls -l ./release
-          ls -l ./release/packagelock
           tar -czvf release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz -C release packagelock
-          ls -l ./release
 
+      - name: Calculate Checksum
+        run: |
+          md5sum ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz > ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz.md5
       - name: Get release URL
         id: get_release
         uses: bruceadams/get-release@v1.3.2
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
-      - name: Upload Assets
+      - name: Upload Release Tarball
         id: upload-release-asset 
         uses: actions/upload-release-asset@v1
         env:
@@ -64,3 +64,14 @@ jobs:
           asset_path: ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz
           asset_name: packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz
           asset_content_type: application/gzip
+
+      - name: Upload Checksum
+        id: upload-checksum-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
+          asset_path: ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz.md5
+          asset_name: packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz.md5
+          asset_content_type: text/plain
