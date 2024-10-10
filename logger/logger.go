@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/k0kubun/pp"
@@ -41,7 +42,15 @@ func InitLogger() (*zap.SugaredLogger, error) {
 	// Build the logger
 	logger, err := loggerConfig.Build()
 	if err != nil {
-		// Handle logger initialization error (no panic)
+		sudoErrorMessage := `
+		We cannot create a Logger. This oftenly fails when the User running PackageLock
+		doesnt has Read & Write Permissions on the Directory PackageLock is running in.
+
+		You can change the Permissions with '$ (sudo) chmod ---' or run PackageLock with 'sudo'.
+		🚀
+		`
+		fmt.Println(sudoErrorMessage)
+		pp.Printf("Cannot init Logger, got: %s")
 		logger = nil
 	}
 	// Return the initialized logger and any error that occurred
