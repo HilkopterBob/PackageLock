@@ -62,6 +62,14 @@ var stopCmd = &cobra.Command{
 	},
 }
 
+var setupCmd = &cobra.Command{
+	Use:   "setup",
+	Short: "Setup PackageLock",
+	Run: func(cmd *cobra.Command, args []string) {
+		setup()
+	},
+}
+
 // Generate command
 var generateCmd = &cobra.Command{
 	Use:       "generate [certs|config|admin-user]",
@@ -104,25 +112,44 @@ func validGenerateArgs() cobra.PositionalArgs {
 	}
 }
 
+func setup() {
+	pp.Println("Starting The PackageLock Setup!")
+
+	err := os.MkdirAll("logs/", os.ModePerm)
+	if err != nil {
+		pp.Printf("Couldn't create 'logs' directory. Got: %s", err)
+		panic(err)
+	}
+	pp.Println("Generated Logs directory")
+
+	err = os.MkdirAll("certs/", os.ModePerm)
+	if err != nil {
+		pp.Printf("Couldn't create 'logs' directory. Got: %s", err)
+		panic(err)
+	}
+	pp.Println("Generated certs directory")
+
+	pp.Println("Setup finished successfully!")
+}
+
+// INFO: init is ran everytime a cobra comand gets used.
+// It does not init the Server!
+// It only inits cobra!
 func init() {
 	// Add commands to rootCmd
 	rootCmd.AddCommand(startCmd)
 	rootCmd.AddCommand(generateCmd)
 	rootCmd.AddCommand(restartCmd)
 	rootCmd.AddCommand(stopCmd)
+	rootCmd.AddCommand(setupCmd)
 
 	// Declare the Logger into global logger.Logger
+	// Init here so commands can be logget to!
 	var loggerError error
 	logger.Logger, loggerError = logger.InitLogger()
 	if loggerError != nil {
 		// INFO: Essential APP-Part, so crash out asap
 		panic(loggerError)
-	}
-
-	initConfig()
-	err := db.InitDB()
-	if err != nil {
-		logger.Logger.Panicf("Got error from db.InitDB: %s", err)
 	}
 }
 
@@ -183,6 +210,19 @@ func initConfig() {
 	}
 }
 
+// Initializes everything that is needed for the Server
+// to run
+func initServer() {
+	initConfig()
+	err := db.InitDB()
+	if err != nil {
+		logger.Logger.Panicf("Got error from db.InitDB: %s", err)
+	}
+
+	// after init run Server
+	startServer()
+}
+
 // startServer starts the Fiber server with appropriate configuration
 func startServer() {
 	pid := os.Getpid()
@@ -238,7 +278,7 @@ func startServer() {
 
 				_, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
-        
+
 				if err := Router.Router.Shutdown(); err != nil {
 					logger.Logger.Warnf("Server shutdown failed: %v\n", err)
 				} else {
@@ -246,7 +286,7 @@ func startServer() {
 					fmt.Println("Server stopped.")
 					logger.Logger.Info("Server stopped.")
 				}
-        
+
 				startServer()
 
 			case <-quitChan:
