@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"packagelock/db"
+	"packagelock/logger"
 	"packagelock/structs"
 
 	"github.com/gofiber/fiber/v2"
@@ -12,16 +14,18 @@ func RegisterHost(c *fiber.Ctx) error {
 
 	// Parse the JSON request body into newHost
 	if err := c.BodyParser(&newHost); err != nil {
-		// TODO: Add logs
-		// TODO: Add error handling
+		logger.Logger.Warnf("Cannot parse JSON into new Host! Got: %s", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Cannot parse JSON",
 		})
 	}
 
-	// Append new host to the Hosts slice
-	Hosts = append(Hosts, newHost)
+	transaction, err := db.DB.Create("hosts", newHost)
+	if err != nil {
+		logger.Logger.Warnf("Can't insert new Host into DB, got: %s", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(nil)
+	}
 
-	// Respond with the newly created host
-	return c.Status(fiber.StatusCreated).JSON(newHost)
+	logger.Logger.Infof("Successfully Created new Host with ID: %s", newHost.HostID)
+	return c.Status(fiber.StatusCreated).JSON(transaction)
 }

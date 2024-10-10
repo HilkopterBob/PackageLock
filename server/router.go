@@ -5,6 +5,7 @@ import (
 	"os"
 	"packagelock/config"
 	"packagelock/handler"
+	"packagelock/logger"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
@@ -21,11 +22,11 @@ type Routes struct {
 
 // addAgentHandler sets up agent-related routes in Fiber.
 func (r Routes) addAgentHandler(group fiber.Router) {
-	AgentGroup := group.Group("/agent")
+	AgentGroup := group.Group("/agents")
 
-	AgentGroup.Get("/:id", handler.GetAgentByID)
-	AgentGroup.Get("/:id/host", handler.GetHostByAgentID)
+	AgentGroup.Get("/", handler.GetAgentByID)
 	AgentGroup.Post("/register", handler.RegisterAgent)
+	logger.Logger.Debug("Added Agent Handlers.")
 }
 
 // addGeneralHandler sets up general-related routes in Fiber.
@@ -34,19 +35,25 @@ func (r Routes) addGeneralHandler(group fiber.Router) {
 
 	GeneralGroup.Get("/hosts", handler.GetHosts)
 	GeneralGroup.Get("/agents", handler.GetAgents)
+	logger.Logger.Debug("Added General Handlers.")
 }
 
 // addHostHandler sets up host-related routes in Fiber.
 func (r Routes) addHostHandler(group fiber.Router) {
-	HostGroup := group.Group("/host")
+	HostGroup := group.Group("/hosts")
 
+	HostGroup.Get("/", handler.GetHostByAgentID)
 	HostGroup.Post("/register", handler.RegisterHost)
+
+	logger.Logger.Debug("Added Host Handlers.")
 }
 
 func (r Routes) addLoginHandler(group fiber.Router) {
 	LoginGroup := group.Group("/auth")
 
 	LoginGroup.Post("/login", handler.LoginHandler)
+
+	logger.Logger.Debug("Added Login Handlers.")
 }
 
 // AddRoutes adds all handler groups to the current Fiber app.
@@ -66,6 +73,7 @@ func AddRoutes(Config config.ConfigProvider) Routes {
 
 	// Use JWT if in production
 	if Config.Get("general.production") == true {
+		logger.Logger.Info("Enabled Production! Adding JWT!")
 		// Read the private key for JWT
 		keyData, err := os.ReadFile(Config.GetString("network.ssl.privatekeypath"))
 		if err != nil {
@@ -73,7 +81,7 @@ func AddRoutes(Config config.ConfigProvider) Routes {
 		}
 		privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(keyData)
 		if err != nil {
-			log.Fatal(err)
+			logger.Logger.Panicf("Can't open Private Key File! Got: %s", err)
 		}
 
 		// JWT Middleware to protect specific routes
@@ -89,6 +97,7 @@ func AddRoutes(Config config.ConfigProvider) Routes {
 		router.addAgentHandler(v1)
 		router.addHostHandler(v1)
 	} else {
+		logger.Logger.Info("Non-Production Setup! Disabled JWT!")
 		// Create the versioned route group without JWT protection (for non-production environments)
 		v1 := router.Router.Group("/v1")
 
