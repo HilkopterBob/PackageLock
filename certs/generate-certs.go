@@ -43,6 +43,11 @@ func CreateSelfSignedCert(certFile, keyFile string) error {
 		BasicConstraintsValid: true,
 	}
 
+	err = os.MkdirAll("certs/", os.ModePerm)
+	if err != nil {
+		logger.Logger.Panicf("Cannot create 'certs/' directory, got: %s", err)
+	}
+
 	// Generate a self-signed certificate using the RSA private key
 	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
 	if err != nil {
