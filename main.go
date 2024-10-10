@@ -60,7 +60,7 @@ var stopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Stop the running server",
 	Run: func(cmd *cobra.Command, args []string) {
-		stopServer()
+		initServer()
 	},
 }
 
