@@ -11,8 +11,10 @@ import (
 	"packagelock/logger"
 	"packagelock/server"
 	"packagelock/structs"
+	"path/filepath"
 	"strconv"
 	"syscall"
+	"text/template"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -129,7 +131,75 @@ func setup() {
 	}
 	pp.Println("Generated certs directory")
 
+	generateUnitFile()
+	pp.Println("Generated Unit File")
+
 	pp.Println("Setup finished successfully!")
+}
+
+func generateUnitFile() {
+	// SystemdTemplate defines the systemd unit file structure
+	const SystemdTemplate = `[Unit]
+Description=PackageLock Management Server
+After=network.target
+
+[Service]
+ExecStart={{.ExecStart}} start
+Restart=always
+User={{.User}}
+Group={{.Group}}
+
+[Install]
+WantedBy=multi-user.target
+`
+
+	// UnitFileData holds the dynamic data for the systemd unit file
+	type UnitFileData struct {
+		ExecStart string
+		User      string
+		Group     string
+	}
+
+	// Get the current executable path
+	execPath, err := os.Executable()
+	if err != nil {
+		logger.Logger.Panicf("failed to get executable path: %w", err)
+	}
+	// Convert to an absolute path
+	execPath, err = filepath.Abs(execPath)
+	if err != nil {
+		logger.Logger.Panicf("failed to get absolute executable path: %w", err)
+	}
+
+	// Define the data to be injected into the unit file
+	data := UnitFileData{
+		ExecStart: execPath,     // The path of the Go binary
+		User:      "your-user",  // Replace with your actual user
+		Group:     "your-group", // Replace with your actual group
+	}
+
+	// Open the systemd unit file for writing (requires sudo permission)
+	filePath := "/etc/systemd/system/packagelock.service"
+	file, err := os.Create(filePath)
+	if err != nil {
+		pp.Println("Seems like you cant generate the Unit File...")
+		pp.Println("Did you ran this with 'sudo'?🚀")
+		logger.Logger.Panicf("failed to create systemd unit file: %w", err)
+	}
+	defer file.Close()
+
+	// Parse and execute the systemd template
+	tmpl, err := template.New("systemd").Parse(SystemdTemplate)
+	if err != nil {
+		logger.Logger.Panicf("failed to parse systemd template: %w", err)
+	}
+
+	err = tmpl.Execute(file, data)
+	if err != nil {
+		logger.Logger.Panicf("failed to execute template: %w", err)
+	}
+
+	pp.Printf("Systemd unit file created at %s\n", filePath)
 }
 
 // INFO: init is ran everytime a cobra comand gets used.
