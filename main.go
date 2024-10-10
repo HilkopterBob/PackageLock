@@ -44,7 +44,7 @@ var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start the server",
 	Run: func(cmd *cobra.Command, args []string) {
-		startServer()
+		initServer()
 	},
 }
 
@@ -60,7 +60,7 @@ var stopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Stop the running server",
 	Run: func(cmd *cobra.Command, args []string) {
-		initServer()
+		stopServer()
 	},
 }
 
