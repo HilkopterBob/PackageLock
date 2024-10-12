@@ -44,7 +44,7 @@ var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start the server",
 	Run: func(cmd *cobra.Command, args []string) {
-		initServer()
+		initServer(false)
 	},
 }
 
@@ -69,6 +69,14 @@ var setupCmd = &cobra.Command{
 	Short: "Setup PackageLock",
 	Run: func(cmd *cobra.Command, args []string) {
 		setup()
+	},
+}
+
+var printRoutesCmd = &cobra.Command{
+	Use:   "print-routes",
+	Short: "Prints out all registered routes",
+	Run: func(cmd *cobra.Command, args []string) {
+		initServer(true)
 	},
 }
 
@@ -212,6 +220,7 @@ func init() {
 	rootCmd.AddCommand(restartCmd)
 	rootCmd.AddCommand(stopCmd)
 	rootCmd.AddCommand(setupCmd)
+	rootCmd.AddCommand(printRoutesCmd)
 
 	// Declare the Logger into global logger.Logger
 	// Init here so commands can be logget to!
@@ -289,7 +298,7 @@ func initConfig() {
 
 // Initializes everything that is needed for the Server
 // to run
-func initServer() {
+func initServer(printRoutes bool) {
 	initConfig()
 	err := db.InitDB()
 	if err != nil {
@@ -297,11 +306,11 @@ func initServer() {
 	}
 
 	// after init run Server
-	startServer()
+	startServer(printRoutes)
 }
 
 // startServer starts the Fiber server with appropriate configuration
-func startServer() {
+func startServer(printRoutes bool) {
 	pid := os.Getpid()
 	err := os.WriteFile("packagelock.pid", []byte(strconv.Itoa(pid)), 0644)
 	if err != nil {
@@ -316,9 +325,21 @@ func startServer() {
 	signal.Notify(quitChan, os.Interrupt, syscall.SIGTERM)
 
 	// Start the server in a goroutine
-	go func() {
+	go func(printRoutes bool) {
 		for {
 			Router := server.AddRoutes(config.Config)
+
+			if printRoutes == true {
+				routes := Router.Router.Stack() // Get all registered routes
+
+				for _, route := range routes {
+					for _, r := range route {
+						fmt.Printf("%s %s\n", r.Method, r.Path)
+					}
+				}
+				logger.Logger.Info("Printed all routes. Stopping the server...")
+				stopServer()
+			}
 
 			// Setup server address from config
 			serverAddr := config.Config.GetString("network.fqdn") + ":" + config.Config.GetString("network.port")
@@ -364,7 +385,7 @@ func startServer() {
 					logger.Logger.Info("Server stopped.")
 				}
 
-				startServer()
+				startServer(printRoutes)
 
 			case <-quitChan:
 
@@ -383,7 +404,7 @@ func startServer() {
 				return
 			}
 		}
-	}()
+	}(printRoutes)
 
 	// Watch for config changes
 	config.Config.OnConfigChange(func(e fsnotify.Event) {
@@ -405,7 +426,7 @@ func restartServer() {
 	fmt.Println("Restarting the Server...")
 	logger.Logger.Info("Restarting the Server...")
 	time.Sleep(5 * time.Second)
-	startServer()
+	startServer(false)
 }
 
 func stopServer() {
