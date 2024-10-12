@@ -74,8 +74,8 @@ var setupCmd = &cobra.Command{
 
 // Generate command
 var generateCmd = &cobra.Command{
-	Use:       "generate [certs|config|admin-user]",
-	Short:     "Generate certs or config files or an  admin-user",
+	Use:       "generate [certs|config|admin]",
+	Short:     "Generate certs or config files or an admin",
 	Long:      "Generate certificates, configuration files or an admin-user required by the application.",
 	Args:      cobra.MatchAll(cobra.ExactArgs(1), validGenerateArgs()),
 	ValidArgs: []string{"certs", "config", "admin"},
@@ -110,7 +110,7 @@ func validGenerateArgs() cobra.PositionalArgs {
 				return nil
 			}
 		}
-		return fmt.Errorf("invalid argument: '%s'. Must be one of 'certs' or 'config' or 'user'", args[0])
+		return fmt.Errorf("invalid argument: '%s'. Must be one of 'certs' or 'config' or 'admin'", args[0])
 	}
 }
 
@@ -221,10 +221,17 @@ func init() {
 		// INFO: Essential APP-Part, so crash out asap
 		panic(loggerError)
 	}
+	initConfig()
 }
 
 // generate admin for login and Setup
 func generateAdmin() error {
+	initConfig()
+	err := db.InitDB()
+	if err != nil {
+		logger.Logger.Panicf("Got error from db.InitDB: %s", err)
+	}
+
 	adminPw, err := password.Generate(64, 10, 10, false, false)
 	if err != nil {
 		logger.Logger.Panicf("Got error while generating ADmin Password: %s", err)
