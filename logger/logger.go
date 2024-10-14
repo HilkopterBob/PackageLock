@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/k0kubun/pp"
@@ -26,6 +27,7 @@ func NewLogger() (*zap.Logger, error) {
 		Compress:   true,           // Compress the rotated log files
 	}
 
+
 	// Encoder configuration
 	encoderConfig := zapcore.EncoderConfig{
 		TimeKey:        "timestamp",
@@ -39,6 +41,7 @@ func NewLogger() (*zap.Logger, error) {
 		EncodeTime:     zapcore.ISO8601TimeEncoder,
 		EncodeDuration: zapcore.StringDurationEncoder,
 		EncodeCaller:   zapcore.ShortCallerEncoder,
+
 	}
 
 	encoder := zapcore.NewConsoleEncoder(encoderConfig) // Use NewJSONEncoder for JSON logs
