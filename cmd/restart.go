@@ -1,50 +1,36 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
-	"packagelock/config"
-	"packagelock/db"
-	"packagelock/logger"
-	"packagelock/server"
+	"os"
+	"os/exec"
+	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
-	"go.uber.org/fx"
-	"go.uber.org/zap"
 )
 
-// NewRestartCmd creates the restart command.
-func NewRestartCmd(rootParams RootParams) *cobra.Command {
+func NewRestartCmd() *cobra.Command {
 	restartCmd := &cobra.Command{
 		Use:   "restart",
 		Short: "Restart the running server",
 		Run: func(cmd *cobra.Command, args []string) {
-			// Create the Fx application
-			app := fx.New(
-				fx.Supply(rootParams),
-				logger.Module,
-				config.Module,
-				db.Module,
-				server.Module,
-			)
-
-			// Start the application
-			if err := app.Start(context.Background()); err != nil {
-				rootParams.Logger.Fatal("Failed to start application for restart", zap.Error(err))
+			// Stop the running server
+			fmt.Println("Stopping the server...")
+			if err := stopServer(); err != nil {
+				fmt.Println("Failed to stop the server:", err)
+				os.Exit(1)
 			}
 
-			// Perform the restart
-			if err := restartApplication(app, rootParams.Logger); err != nil {
-				rootParams.Logger.Fatal("Failed to restart application", zap.Error(err))
-			}
+			// Wait before restarting
+			time.Sleep(5 * time.Second)
 
-			// Wait for the application to stop
-			<-app.Done()
-
-			// Stop the application
-			if err := app.Stop(context.Background()); err != nil {
-				rootParams.Logger.Fatal("Failed to stop application after restart", zap.Error(err))
+			// Start the server
+			fmt.Println("Starting the server...")
+			if err := startServer(); err != nil {
+				fmt.Println("Failed to start the server:", err)
+				os.Exit(1)
 			}
 		},
 	}
@@ -52,24 +38,61 @@ func NewRestartCmd(rootParams RootParams) *cobra.Command {
 	return restartCmd
 }
 
-func restartApplication(app *fx.App, logger *zap.Logger) error {
-	// Stop the application
-	if err := app.Stop(context.Background()); err != nil {
-		logger.Error("Failed to stop application", zap.Error(err))
-		return err
+// stopServer stops the running server by reading the PID file and sending SIGTERM.
+func stopServer() error {
+	// Read the PID from the file
+	data, err := os.ReadFile("packagelock.pid")
+	if err != nil {
+		return fmt.Errorf("could not read PID file: %w", err)
 	}
 
-	// Wait before restarting
-	time.Sleep(5 * time.Second)
-
-	fmt.Println("Restarting the application...")
-	logger.Info("Restarting the application...")
-
-	// Start the application again
-	if err := app.Start(context.Background()); err != nil {
-		logger.Error("Failed to restart application", zap.Error(err))
-		return err
+	pid, err := strconv.Atoi(string(data))
+	if err != nil {
+		return fmt.Errorf("invalid PID found in file: %w", err)
 	}
 
+	// Send SIGTERM to the process
+	fmt.Printf("Stopping the server with PID: %d\n", pid)
+
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return fmt.Errorf("failed to find the process: %w", err)
+	}
+
+	err = process.Signal(syscall.SIGTERM)
+	if err != nil {
+		return fmt.Errorf("failed to stop the server: %w", err)
+	}
+
+	fmt.Println("Server stopped.")
+
+	// Remove the PID file
+	err = os.Remove("packagelock.pid")
+	if err != nil {
+		fmt.Println("Failed to remove PID file:", err)
+	} else {
+		fmt.Println("PID file removed successfully.")
+	}
+
+	return nil
+}
+
+// startServer starts the server by creating a new Fx application and running it in a separate process.
+func startServer() error {
+	// Execute the start command as a new process
+	executable, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("failed to get executable path: %w", err)
+	}
+
+	cmd := exec.Command(executable, "start")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start server process: %w", err)
+	}
+
+	fmt.Printf("Server started with PID: %d\n", cmd.Process.Pid)
 	return nil
 }

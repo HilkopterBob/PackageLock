@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 	"packagelock/certs"
 	"packagelock/config"
 	"packagelock/db"
@@ -10,7 +11,10 @@ import (
 	"packagelock/structs"
 	"time"
 
+	configPkg "packagelock/config"
+
 	"github.com/google/uuid"
+	"github.com/k0kubun/pp"
 	"github.com/sethvargo/go-password/password"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -20,7 +24,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func NewGenerateCmd(rootParams RootParams) *cobra.Command {
+func NewGenerateCmd() *cobra.Command {
 	generateCmd := &cobra.Command{
 		Use:       "generate [certs|config|admin]",
 		Short:     "Generate certificates, configuration files, or an admin",
@@ -28,48 +32,69 @@ func NewGenerateCmd(rootParams RootParams) *cobra.Command {
 		Args:      cobra.ExactValidArgs(1),
 		ValidArgs: []string{"certs", "config", "admin"},
 		Run: func(cmd *cobra.Command, args []string) {
+			if len(args) == 0 {
+				fmt.Println("Please specify an argument: certs, config, or admin.")
+				return
+			}
 			switch args[0] {
 			case "certs":
 				app := fx.New(
-					fx.Supply(rootParams),
+					fx.Provide(func() string { return "Command Runner" }),
 					logger.Module,
-					config.Module,
+					configPkg.Module,
 					certs.Module,
-					fx.Invoke(func(certGen *certs.CertGenerator, logger *zap.Logger, config *viper.Viper) {
-						err := certGen.CreateSelfSignedCert(
-							config.GetString("network.ssl-config.certificatepath"),
-							config.GetString("network.ssl-config.privatekeypath"),
-						)
-						if err != nil {
-							fmt.Printf("Error generating self-signed certs: %v\n", err)
-							logger.Warn("Error generating self-signed certs", zap.Error(err))
-						}
-					}),
+					fx.Invoke(runGenerateCerts),
 				)
 
 				if err := app.Start(context.Background()); err != nil {
-					rootParams.Logger.Fatal("Failed to start application for certificate generation", zap.Error(err))
+					fmt.Println("Failed to start application for certificate generation:", err)
+					os.Exit(1)
 				}
 
 				if err := app.Stop(context.Background()); err != nil {
-					rootParams.Logger.Fatal("Failed to stop application after certificate generation", zap.Error(err))
+					fmt.Println("Failed to stop application after certificate generation:", err)
+					os.Exit(1)
 				}
+				os.Exit(0)
 			case "config":
-				config.CreateDefaultConfig(rootParams.Config, rootParams.Logger)
+				app := fx.New(
+					fx.Provide(func() string { return "Command Runner" }),
+					certs.Module,
+					logger.Module,
+					configPkg.Module,
+					fx.Invoke(runGenerateConfig),
+				)
+
+				if err := app.Start(context.Background()); err != nil {
+					fmt.Println("Failed to start application for config generation:", err)
+					os.Exit(1)
+				}
+
+				if err := app.Stop(context.Background()); err != nil {
+					fmt.Println("Failed to stop application after config generation:", err)
+					os.Exit(1)
+				}
+				os.Exit(0)
 			case "admin":
 				app := fx.New(
-					fx.Supply(rootParams),
+					fx.Provide(func() string { return "Command Runner" }),
+					certs.Module,
+					config.Module,
+					logger.Module,
 					db.Module,
-					fx.Invoke(generateAdmin),
+					fx.Invoke(runGenerateAdmin),
 				)
 
 				if err := app.Start(context.Background()); err != nil {
-					rootParams.Logger.Fatal("Failed to start application for admin generation", zap.Error(err))
+					fmt.Println("Failed to start application for admin generation:", err)
+					os.Exit(1)
 				}
 
 				if err := app.Stop(context.Background()); err != nil {
-					rootParams.Logger.Fatal("Failed to stop application after admin generation", zap.Error(err))
+					fmt.Println("Failed to stop application after admin generation:", err)
+					os.Exit(1)
 				}
+				os.Exit(0)
 			default:
 				fmt.Println("Invalid argument. Use 'certs', 'config', or 'admin'.")
 			}
@@ -79,8 +104,27 @@ func NewGenerateCmd(rootParams RootParams) *cobra.Command {
 	return generateCmd
 }
 
-// Add the missing generateAdmin function
-func generateAdmin(db *db.Database, logger *zap.Logger) {
+func runGenerateCerts(certGen *certs.CertGenerator, logger *zap.Logger, config *viper.Viper) {
+	err := certGen.CreateSelfSignedCert(
+		config.GetString("network.ssl-config.certificatepath"),
+		config.GetString("network.ssl-config.privatekeypath"),
+	)
+	if err != nil {
+		fmt.Printf("Error generating self-signed certs: %v\n", err)
+		logger.Warn("Error generating self-signed certs", zap.Error(err))
+	} else {
+		logger.Info("Successfully generated self-signed certificates.")
+		fmt.Println("Certificates generated successfully.")
+	}
+}
+
+func runGenerateConfig(config *viper.Viper, logger *zap.Logger) {
+	configPkg.CreateDefaultConfig(config, logger)
+	logger.Info("Default configuration file created.")
+	fmt.Println("Configuration file generated successfully.")
+}
+
+func runGenerateAdmin(db *db.Database, logger *zap.Logger) {
 	adminPw, err := password.Generate(64, 10, 10, false, false)
 	if err != nil {
 		logger.Fatal("Error generating admin password", zap.Error(err))
@@ -116,8 +160,8 @@ func generateAdmin(db *db.Database, logger *zap.Logger) {
 		logger.Fatal("Error querying default admin", zap.Error(err))
 	}
 
-	fmt.Println("Admin Username:", createdUser.Username)
-	fmt.Println("Admin Password:", adminPw) // Display the original password
+	pp.Println("Admin Username:", createdUser.Username)
+	pp.Println("Admin Password:", adminPw) // Display the original password
 
-	// For security, consider providing the password securely rather than printing
+	logger.Info("Admin user created successfully.")
 }

@@ -27,11 +27,11 @@ func NewRootCmd() *cobra.Command {
 
 	// Add subcommands to the root command
 	rootCmd.AddCommand(NewStartCmd())
-	//	rootCmd.AddCommand(NewStopCmd())
-	//	rootCmd.AddCommand(NewRestartCmd())
-	//	rootCmd.AddCommand(NewSetupCmd())
-	//	rootCmd.AddCommand(NewGenerateCmd())
-	//	rootCmd.AddCommand(NewPrintRoutesCmd())
+	rootCmd.AddCommand(NewStopCmd())
+	rootCmd.AddCommand(NewRestartCmd())
+	rootCmd.AddCommand(NewSetupCmd())
+	rootCmd.AddCommand(NewGenerateCmd())
+	rootCmd.AddCommand(NewPrintRoutesCmd())
 
 	return rootCmd
 }

@@ -3,26 +3,42 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"packagelock/logger"
 	"path/filepath"
 	"text/template"
 
 	"github.com/spf13/cobra"
+	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
 
-func NewSetupCmd(rootParams RootParams) *cobra.Command {
+func NewSetupCmd() *cobra.Command {
 	setupCmd := &cobra.Command{
 		Use:   "setup",
 		Short: "Setup PackageLock",
 		Run: func(cmd *cobra.Command, args []string) {
-			setup(rootParams.Logger)
+			app := fx.New(
+				logger.Module,
+				fx.Invoke(runSetup),
+			)
+
+			if err := app.Start(cmd.Context()); err != nil {
+				fmt.Println("Failed to start application for setup command:", err)
+				os.Exit(1)
+			}
+
+			// Since runSetup runs synchronously, we can stop the app immediately
+			if err := app.Stop(cmd.Context()); err != nil {
+				fmt.Println("Failed to stop application after setup command:", err)
+				os.Exit(1)
+			}
 		},
 	}
 
 	return setupCmd
 }
 
-func setup(logger *zap.Logger) {
+func runSetup(logger *zap.Logger) {
 	fmt.Println("Starting the PackageLock setup!")
 
 	err := os.MkdirAll("logs/", os.ModePerm)
@@ -41,6 +57,7 @@ func setup(logger *zap.Logger) {
 	fmt.Println("Generated systemd unit file")
 
 	fmt.Println("Setup finished successfully!")
+	os.Exit(0)
 }
 
 func generateUnitFile(logger *zap.Logger) {

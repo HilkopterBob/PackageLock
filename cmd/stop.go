@@ -14,23 +14,25 @@ import (
 )
 
 // NewStopCmd creates the stop command.
-func NewStopCmd(rootParams RootParams) *cobra.Command {
+func NewStopCmd() *cobra.Command {
 	stopCmd := &cobra.Command{
 		Use:   "stop",
 		Short: "Stop the running server",
 		Run: func(cmd *cobra.Command, args []string) {
 			app := fx.New(
-				fx.Supply(rootParams),
 				logger.Module,
-				fx.Invoke(stopServer),
+				fx.Invoke(runStop),
 			)
 
 			if err := app.Start(context.Background()); err != nil {
-				rootParams.Logger.Fatal("Failed to start application for stop command", zap.Error(err))
+				fmt.Println("Failed to start application for stop command:", err)
+				os.Exit(1)
 			}
 
+			// Since runStop runs synchronously, we can stop the app immediately
 			if err := app.Stop(context.Background()); err != nil {
-				rootParams.Logger.Fatal("Failed to stop application after stop command", zap.Error(err))
+				fmt.Println("Failed to stop application after stop command:", err)
+				os.Exit(1)
 			}
 		},
 	}
@@ -38,7 +40,8 @@ func NewStopCmd(rootParams RootParams) *cobra.Command {
 	return stopCmd
 }
 
-func stopServer(logger *zap.Logger) {
+// runStop performs the stop operation using the injected logger.
+func runStop(logger *zap.Logger) {
 	// Read the PID from the file
 	data, err := os.ReadFile("packagelock.pid")
 	if err != nil {
@@ -54,7 +57,13 @@ func stopServer(logger *zap.Logger) {
 	fmt.Printf("Stopping the server with PID: %d\n", pid)
 	logger.Info("Stopping the server", zap.Int("PID", pid))
 
-	err = syscall.Kill(pid, syscall.SIGTERM)
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		logger.Warn("Failed to find the process", zap.Error(err))
+		return
+	}
+
+	err = process.Signal(syscall.SIGTERM)
 	if err != nil {
 		logger.Warn("Failed to stop the server", zap.Error(err))
 		return
@@ -71,4 +80,6 @@ func stopServer(logger *zap.Logger) {
 		fmt.Println("PID file removed successfully.")
 		logger.Info("PID file removed successfully.")
 	}
+
+	os.Exit(0)
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"packagelock/handler"
+	"strconv"
 
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
@@ -98,6 +99,15 @@ func startServer(app *fiber.App, params ServerParams) {
 
 	params.Lifecycle.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
+			// Write PID to file
+			pid := os.Getpid()
+			err := os.WriteFile("packagelock.pid", []byte(strconv.Itoa(pid)), 0644)
+			if err != nil {
+				params.Logger.Warn("Failed to write PID file", zap.Error(err))
+			} else {
+				params.Logger.Info("PID file written", zap.Int("PID", pid))
+			}
+
 			go func() {
 				if params.Config.GetBool("network.ssl") {
 					params.Logger.Info("Starting HTTPS server", zap.String("address", serverAddr))
