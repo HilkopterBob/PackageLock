@@ -25,9 +25,11 @@ type ServerParams struct {
 	Handlers  *handler.Handlers // The injected Handlers struct
 }
 
-func NewServer(params ServerParams) *fiber.App {
+func NewServer(params ServerParams, logger *zap.Logger) *fiber.App {
+	logger.Info("Starting API-Server Initialization:")
 	// Initialize template engine
 	engine := html.New("./templates", ".html")
+	logger.Info("Added template Enginge.")
 
 	// Initialize Fiber app
 	app := fiber.New(fiber.Config{
@@ -36,16 +38,20 @@ func NewServer(params ServerParams) *fiber.App {
 
 	// Middleware to recover from panics
 	app.Use(recover.New())
+	logger.Info("Added Recovery Middleware.")
 
 	// Add routes
 	addRoutes(app, params)
+	logger.Info("Added routes.")
 
 	// Add 404 handler
 	app.Use(func(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).Render("404", fiber.Map{})
 	})
+	logger.Info("Added default 404 Handler.")
 
 	// Start the server using lifecycle hooks
+	logger.Info("Finished API-Server Initialization.")
 	startServer(app, params)
 
 	return app
