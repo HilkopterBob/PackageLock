@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -51,6 +52,7 @@ var Module = fx.Options(
 					if err := rootCmd.Execute(); err != nil {
 						logger.Fatal("Failed to execute root command", zap.Error(err))
 					}
+					os.Exit(0)
 				}()
 				return nil
 			},
