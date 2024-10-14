@@ -44,9 +44,13 @@ func NewServer(params ServerParams, logger *zap.Logger) *fiber.App {
 	addRoutes(app, params)
 	logger.Info("Added routes.")
 
+	appVersion := params.Config.GetString("general.app-version")
+
 	// Add 404 handler
 	app.Use(func(c *fiber.Ctx) error {
-		return c.Status(fiber.StatusNotFound).Render("404", fiber.Map{})
+		return c.Status(fiber.StatusNotFound).Render("404", fiber.Map{
+			"AppVersion": appVersion,
+		})
 	})
 	logger.Info("Added default 404 Handler.")
 
