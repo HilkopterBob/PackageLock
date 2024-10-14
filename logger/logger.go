@@ -4,21 +4,19 @@ import (
 	"os"
 
 	"github.com/k0kubun/pp"
+	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
-var Logger *zap.SugaredLogger
+// Module exports the logger module.
+var Module = fx.Provide(NewLogger)
 
-// InitLogger initializes the zap.Logger once and returns the instance.
-func InitLogger() (*zap.SugaredLogger, error) {
-	err := os.MkdirAll("logs/", os.ModePerm)
-	if err != nil {
-		pp.Printf("Couldn't create 'logs' directory. Got: %s", err)
-		panic(err)
-	}
+// NewLogger constructs a new logger instance.
+func NewLogger() (*zap.Logger, error) {
+	InitLogger()
 
-	// Ensure the logger is initialized only once
+	// logger Config
 	loggerConfig := zap.Config{
 		Encoding:         "console", // You can also use "json"
 		OutputPaths:      []string{"logs/app.log"},
@@ -43,7 +41,17 @@ func InitLogger() (*zap.SugaredLogger, error) {
 	if err != nil {
 		// Handle logger initialization error (no panic)
 		logger = nil
+		panic(err)
 	}
 	// Return the initialized logger and any error that occurred
-	return logger.Sugar(), err
+	return logger, err
+}
+
+// Creates to logs/ directory
+func InitLogger() {
+	err := os.MkdirAll("logs/", os.ModePerm)
+	if err != nil {
+		pp.Printf("Couldn't create 'logs' directory. Got: %s", err)
+		panic(err)
+	}
 }

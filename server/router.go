@@ -1,87 +1,71 @@
 package server
 
 import (
-	"log"
+	"context"
 	"os"
-	"packagelock/config"
 	"packagelock/handler"
-	"packagelock/logger"
 
+	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/template/html/v2"
-
-	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/spf13/viper"
+	"go.uber.org/fx"
+	"go.uber.org/zap"
 )
 
-// Routes holds the Fiber app instance.
-type Routes struct {
-	Router *fiber.App
+type ServerParams struct {
+	fx.In
+
+	Lifecycle fx.Lifecycle
+	Logger    *zap.Logger
+	Config    *viper.Viper
+	Handlers  *handler.Handlers // The injected Handlers struct
 }
 
-// addAgentHandler sets up agent-related routes in Fiber.
-func (r Routes) addAgentHandler(group fiber.Router) {
-	AgentGroup := group.Group("/agents")
-
-	AgentGroup.Get("/", handler.GetAgentByID)
-	AgentGroup.Post("/register", handler.RegisterAgent)
-	logger.Logger.Debug("Added Agent Handlers.")
-}
-
-// addGeneralHandler sets up general-related routes in Fiber.
-func (r Routes) addGeneralHandler(group fiber.Router) {
-	GeneralGroup := group.Group("/general")
-
-	GeneralGroup.Get("/hosts", handler.GetHosts)
-	GeneralGroup.Get("/agents", handler.GetAgents)
-	logger.Logger.Debug("Added General Handlers.")
-}
-
-// addHostHandler sets up host-related routes in Fiber.
-func (r Routes) addHostHandler(group fiber.Router) {
-	HostGroup := group.Group("/hosts")
-
-	HostGroup.Get("/", handler.GetHostByAgentID)
-	HostGroup.Post("/register", handler.RegisterHost)
-
-	logger.Logger.Debug("Added Host Handlers.")
-}
-
-func (r Routes) addLoginHandler(group fiber.Router) {
-	LoginGroup := group.Group("/auth")
-
-	LoginGroup.Post("/login", handler.LoginHandler)
-
-	logger.Logger.Debug("Added Login Handlers.")
-}
-
-// AddRoutes adds all handler groups to the current Fiber app.
-// It's exported and used in main() to return the configured Router.
-func AddRoutes(Config config.ConfigProvider) Routes {
+func NewServer(params ServerParams) *fiber.App {
 	// Initialize template engine
 	engine := html.New("./templates", ".html")
 
 	// Initialize Fiber app
-	router := Routes{
-		Router: fiber.New(fiber.Config{
-			Views: engine,
-		}),
-	}
+	app := fiber.New(fiber.Config{
+		Views: engine,
+	})
 
-	router.addLoginHandler(router.Router)
+	// Middleware to recover from panics
+	app.Use(recover.New())
+
+	// Add routes
+	addRoutes(app, params)
+
+	// Add 404 handler
+	app.Use(func(c *fiber.Ctx) error {
+		return c.Status(fiber.StatusNotFound).Render("404", fiber.Map{})
+	})
+
+	// Start the server using lifecycle hooks
+	startServer(app, params)
+
+	return app
+}
+
+func addRoutes(app *fiber.App, params ServerParams) {
+	// Add login handler
+	addLoginHandler(app, params)
 
 	// Use JWT if in production
-	if Config.Get("general.production") == true {
-		logger.Logger.Info("Enabled Production! Adding JWT!")
+	if params.Config.GetBool("general.production") {
+		params.Logger.Info("Enabled Production! Adding JWT!")
+
 		// Read the private key for JWT
-		keyData, err := os.ReadFile(Config.GetString("network.ssl.privatekeypath"))
+		keyData, err := os.ReadFile(params.Config.GetString("network.ssl-config.privatekeypath"))
 		if err != nil {
-			log.Fatal(err)
+			params.Logger.Fatal("Failed to read private key for JWT", zap.Error(err))
 		}
 		privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(keyData)
 		if err != nil {
-			logger.Logger.Panicf("Can't open Private Key File! Got: %s", err)
+			params.Logger.Fatal("Failed to parse private key for JWT", zap.Error(err))
 		}
 
 		// JWT Middleware to protect specific routes
@@ -90,36 +74,90 @@ func AddRoutes(Config config.ConfigProvider) Routes {
 		})
 
 		// Apply JWT protection to all routes in the "/v1" group
-		v1 := router.Router.Group("/v1", jwtMiddleware)
+		v1 := app.Group("/v1", jwtMiddleware)
 
 		// Add route handlers to the protected group
-		router.addGeneralHandler(v1)
-		router.addAgentHandler(v1)
-		router.addHostHandler(v1)
+		addGeneralHandler(v1, params)
+		addAgentHandler(v1, params)
+		addHostHandler(v1, params)
 	} else {
-		logger.Logger.Info("Non-Production Setup! Disabled JWT!")
-		// Create the versioned route group without JWT protection (for non-production environments)
-		v1 := router.Router.Group("/v1")
+		params.Logger.Info("Non-Production Setup! Disabled JWT!")
+
+		// Create the versioned route group without JWT protection
+		v1 := app.Group("/v1")
 
 		// Add route handlers without JWT protection
-		router.addGeneralHandler(v1)
-		router.addAgentHandler(v1)
-		router.addHostHandler(v1)
+		addGeneralHandler(v1, params)
+		addAgentHandler(v1, params)
+		addHostHandler(v1, params)
 	}
+}
 
-	// Middleware to recover from panics
-	router.Router.Use(recover.New())
+func startServer(app *fiber.App, params ServerParams) {
+	serverAddr := params.Config.GetString("network.fqdn") + ":" + params.Config.GetString("network.port")
 
-	// Add 404 handler
-	router.Router.Use(func(c *fiber.Ctx) error {
-		return c.Status(fiber.StatusNotFound).Render("404", fiber.Map{})
+	params.Lifecycle.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			go func() {
+				if params.Config.GetBool("network.ssl") {
+					params.Logger.Info("Starting HTTPS server", zap.String("address", serverAddr))
+
+					certFile := params.Config.GetString("network.ssl-config.certificatepath")
+					keyFile := params.Config.GetString("network.ssl-config.privatekeypath")
+
+					if err := app.ListenTLS(serverAddr, certFile, keyFile); err != nil {
+						params.Logger.Fatal("Failed to start HTTPS server", zap.Error(err))
+					}
+				} else {
+					params.Logger.Info("Starting HTTP server", zap.String("address", serverAddr))
+
+					if err := app.Listen(serverAddr); err != nil {
+						params.Logger.Fatal("Failed to start HTTP server", zap.Error(err))
+					}
+				}
+			}()
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			params.Logger.Info("Shutting down server")
+			return app.Shutdown()
+		},
 	})
-
-	return router
 }
 
-// ListenAndServeTLS starts the Fiber server using TLS (HTTPS)
-func ListenAndServeTLS(router *fiber.App, certFile, keyFile, addr string) error {
-	// Start HTTPS server using the provided certificate and key files
-	return router.ListenTLS(addr, certFile, keyFile)
+// Individual route handler functions
+func addAgentHandler(group fiber.Router, params ServerParams) {
+	agentGroup := group.Group("/agents")
+
+	agentGroup.Get("/", params.Handlers.GetAgentByID)
+	agentGroup.Post("/register", params.Handlers.RegisterAgent)
+	params.Logger.Debug("Added Agent Handlers.")
 }
+
+func addGeneralHandler(group fiber.Router, params ServerParams) {
+	generalGroup := group.Group("/general")
+
+	generalGroup.Get("/hosts", params.Handlers.GetHosts)
+	generalGroup.Get("/agents", params.Handlers.GetAgents)
+	params.Logger.Debug("Added General Handlers.")
+}
+
+func addHostHandler(group fiber.Router, params ServerParams) {
+	hostGroup := group.Group("/hosts")
+
+	hostGroup.Get("/", params.Handlers.GetHostByAgentID)
+	hostGroup.Post("/register", params.Handlers.RegisterHost)
+	params.Logger.Debug("Added Host Handlers.")
+}
+
+func addLoginHandler(group fiber.Router, params ServerParams) {
+	loginGroup := group.Group("/auth")
+
+	loginGroup.Post("/login", params.Handlers.LoginHandler)
+	params.Logger.Debug("Added Login Handlers.")
+}
+
+// Module exports the server module.
+var Module = fx.Options(
+	fx.Provide(NewServer),
+)
