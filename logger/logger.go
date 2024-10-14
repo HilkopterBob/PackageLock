@@ -44,6 +44,7 @@ func NewLogger() (*zap.Logger, error) {
 		panic(err)
 	}
 	// Return the initialized logger and any error that occurred
+	logger.Info("--------------------------------------------")
 	return logger, err
 }
 
