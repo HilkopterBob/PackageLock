@@ -1,139 +1,60 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
+	"packagelock/certs"
 	"packagelock/config"
 	"packagelock/db"
+	"packagelock/handler"
 	"packagelock/logger"
 	"packagelock/server"
 	"syscall"
 
-	"github.com/fsnotify/fsnotify"
+	"github.com/gofiber/fiber/v2"
 	"github.com/spf13/cobra"
+	"go.uber.org/fx"
 )
 
-var (
-	restartChan = make(chan struct{})
-	quitChan    = make(chan os.Signal, 1)
-)
-
-var startCmd = &cobra.Command{
-	Use:   "start",
-	Short: "Start the server",
-	Run: func(cmd *cobra.Command, args []string) {
-		initServer(false)
-	},
-}
-
-func initServer(printRoutes bool) {
-	// Initialize the database
-	err := db.InitDB()
-	if err != nil {
-		logger.Logger.Panicf("Got error from db.InitDB: %s", err)
+func NewStartCmd() *cobra.Command {
+	startCmd := &cobra.Command{
+		Use:   "start",
+		Short: "Start the server",
 	}
 
-	// Start the server
-	startServer(printRoutes)
-}
+	startCmd.Run = func(cmd *cobra.Command, args []string) {
+		app := fx.New(
+			fx.Provide(
+				func() string {
+					return "1.0.0" // Replace with actual version
+				},
+				logger.NewLogger,
+				config.NewConfig,
+			),
+			certs.Module,
+			db.Module,
+			handler.Module,
+			server.Module,
+			fx.Invoke(func(*fiber.App) {}),
+		)
 
-func startServer(printRoutes bool) {
-	pid := os.Getpid()
-	err := os.WriteFile("packagelock.pid", []byte(fmt.Sprintf("%d", pid)), 0644)
-	if err != nil {
-		logger.Logger.Panicf("Failed to write PID file: %v\n", err)
-		return
-	}
-
-	if config.Config.GetString("general.production") == "false" {
-		logger.Logger.Debug(config.Config.AllSettings())
-	}
-
-	signal.Notify(quitChan, os.Interrupt, syscall.SIGTERM)
-
-	// Start the server in a goroutine
-	go func() {
-		for {
-			Router := server.AddRoutes(config.Config)
-
-			if printRoutes {
-				routes := Router.Router.Stack() // Get all registered routes
-				for _, route := range routes {
-					for _, r := range route {
-						fmt.Printf("%s %s\n", r.Method, r.Path)
-					}
-				}
-				logger.Logger.Info("Printed all routes. Stopping the server...")
-				stopServer()
-				return
-			}
-
-			// Setup server address from config
-			serverAddr := config.Config.GetString("network.fqdn") + ":" + config.Config.GetString("network.port")
-
-			// Start server based on SSL config
-			go func() {
-				if config.Config.GetBool("network.ssl") {
-					logger.Logger.Infof("Starting Fiber HTTPS server at https://%s...\n", serverAddr)
-					err := server.ListenAndServeTLS(
-						Router.Router,
-						config.Config.GetString("network.ssl-config.certificatepath"),
-						config.Config.GetString("network.ssl-config.privatekeypath"),
-						serverAddr)
-					if err != nil {
-						logger.Logger.Panicf("Server error: %s\n", err)
-					}
-				} else {
-					logger.Logger.Infof("Starting Fiber server at %s...\n", serverAddr)
-					if err := Router.Router.Listen(serverAddr); err != nil {
-						logger.Logger.Panicf("Server error: %s\n", err)
-					}
-				}
-			}()
-
-			// Handle restart or quit signals
-			select {
-			case <-restartChan:
-				fmt.Println("Restarting Fiber server...")
-				logger.Logger.Info("Restarting Fiber server...")
-
-				if err := Router.Router.Shutdown(); err != nil {
-					logger.Logger.Warnf("Server shutdown failed: %v\n", err)
-				} else {
-					fmt.Println("Server stopped.")
-					logger.Logger.Info("Server stopped.")
-				}
-
-				startServer(printRoutes)
-				return
-
-			case <-quitChan:
-				fmt.Println("Shutting down Fiber server...")
-				logger.Logger.Info("Shutting down Fiber server...")
-
-				if err := Router.Router.Shutdown(); err != nil {
-					logger.Logger.Warnf("Server shutdown failed: %v\n", err)
-				} else {
-					fmt.Println("Server stopped gracefully.")
-					logger.Logger.Info("Server stopped gracefully.")
-				}
-				return
-			}
+		if err := app.Start(context.Background()); err != nil {
+			fmt.Println("Failed to start server application:", err)
+			os.Exit(1)
 		}
-	}()
 
-	// Watch for config changes
-	config.Config.OnConfigChange(func(e fsnotify.Event) {
-		logger.Logger.Infof("Config file changed: %s", e.Name)
-		logger.Logger.Info("Restarting to apply changes...")
-		fmt.Println("Restarting to apply changes...")
-		restartChan <- struct{}{}
-	})
-	config.Config.WatchConfig()
+		// Wait for interrupt signal to gracefully shutdown the server
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+		<-c
 
-	// Block until quit signal is received
-	<-quitChan
-	logger.Logger.Info("Main process exiting.")
-	fmt.Println("Main process exiting.")
+		if err := app.Stop(context.Background()); err != nil {
+			fmt.Println("Failed to stop server application:", err)
+			os.Exit(1)
+		}
+	}
+
+	return startCmd
 }
