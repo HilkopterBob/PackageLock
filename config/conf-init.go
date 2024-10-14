@@ -2,7 +2,10 @@ package config
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"os"
+	"packagelock/certs"
 	"packagelock/logger"
 
 	"github.com/fsnotify/fsnotify"
@@ -82,5 +85,26 @@ network:
 	errWrite := config.WriteConfigAs("./config.yaml")
 	if errWrite != nil {
 		logger.Logger.Panicf("Cannot write config file, got: %s", errWrite)
+	}
+}
+
+// initConfig initializes Viper and configures the applicationfunc
+func InitConfig(AppVersion string) {
+	Config = StartViper(viper.New())
+
+	// If AppVersion is injected, set it in the configuration
+	if AppVersion != "" {
+		Config.SetDefault("general.app-version", AppVersion)
+	}
+
+	// Check and create self-signed certificates if missing
+	if _, err := os.Stat(Config.GetString("network.ssl-config.certificatepath")); os.IsNotExist(err) {
+		fmt.Println("Certificate files missing, creating new self-signed.")
+		err := certs.CreateSelfSignedCert(
+			Config.GetString("network.ssl-config.certificatepath"),
+			Config.GetString("network.ssl-config.privatekeypath"))
+		if err != nil {
+			logger.Logger.Panicf("Error creating self-signed certificate: %v\n", err)
+		}
 	}
 }
