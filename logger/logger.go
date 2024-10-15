@@ -59,12 +59,6 @@ func NewLogger() (*zap.Logger, error) {
 	logger.Info("--------------------------------------------")
 	logger.Info("Logger initialized successfully")
 
-	go func(logger *zap.Logger) {
-		for {
-			logger.Info("Loop")
-		}
-	}(logger)
-
 	return logger, nil
 }
 
