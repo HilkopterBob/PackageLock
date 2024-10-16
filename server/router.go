@@ -40,8 +40,12 @@ func NewServer(params ServerParams) *fiber.App {
 		Views: engine,
 	})
 
-	// Middleware for tracing with OpenTelemetry using the injected Tracer
-	app.Use(otelfiber.Middleware(otelfiber.WithTracerProvider(otel.GetTracerProvider())))
+	// This middleware eats too much to run always.
+	if os.Getenv("TRACING_ENABLED") == "true" {
+		// Middleware for tracing with OpenTelemetry using the injected Tracer
+		app.Use(otelfiber.Middleware(otelfiber.WithTracerProvider(otel.GetTracerProvider())))
+		params.Logger.Info("Added OpenTelemetry Middleware.")
+	}
 
 	// Middleware to recover from panics
 	app.Use(recover.New())
