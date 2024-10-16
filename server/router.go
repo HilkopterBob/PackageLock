@@ -7,11 +7,14 @@ import (
 	"strconv"
 
 	jwtware "github.com/gofiber/contrib/jwt"
+	"github.com/gofiber/contrib/otelfiber"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/template/html/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/spf13/viper"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
@@ -23,26 +26,30 @@ type ServerParams struct {
 	Logger    *zap.Logger
 	Config    *viper.Viper
 	Handlers  *handler.Handlers // The injected Handlers struct
+	Tracer    trace.Tracer      // Injected Tracer
 }
 
-func NewServer(params ServerParams, logger *zap.Logger) *fiber.App {
-	logger.Info("Starting API-Server Initialization:")
+func NewServer(params ServerParams) *fiber.App {
+	params.Logger.Info("Starting API-Server Initialization:")
 	// Initialize template engine
 	engine := html.New("./templates", ".html")
-	logger.Info("Added template Enginge.")
+	params.Logger.Info("Added template Engine.")
 
 	// Initialize Fiber app
 	app := fiber.New(fiber.Config{
 		Views: engine,
 	})
 
+	// Middleware for tracing with OpenTelemetry using the injected Tracer
+	app.Use(otelfiber.Middleware(otelfiber.WithTracerProvider(otel.GetTracerProvider())))
+
 	// Middleware to recover from panics
 	app.Use(recover.New())
-	logger.Info("Added Recovery Middleware.")
+	params.Logger.Info("Added Recovery Middleware.")
 
 	// Add routes
 	addRoutes(app, params)
-	logger.Info("Added routes.")
+	params.Logger.Info("Added routes.")
 
 	appVersion := params.Config.GetString("general.app-version")
 
@@ -52,10 +59,10 @@ func NewServer(params ServerParams, logger *zap.Logger) *fiber.App {
 			"AppVersion": appVersion,
 		})
 	})
-	logger.Info("Added default 404 Handler.")
+	params.Logger.Info("Added default 404 Handler.")
 
 	// Start the server using lifecycle hooks
-	logger.Info("Finished API-Server Initialization.")
+	params.Logger.Info("Finished API-Server Initialization.")
 	startServer(app, params)
 
 	return app
