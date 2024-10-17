@@ -6,6 +6,7 @@ import (
 	"packagelock/handler"
 	"strconv"
 
+	"github.com/gofiber/contrib/fiberzap"
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
@@ -35,6 +36,12 @@ func NewServer(params ServerParams, logger *zap.Logger) *fiber.App {
 	app := fiber.New(fiber.Config{
 		Views: engine,
 	})
+
+	// Middleware for logging
+	app.Use(fiberzap.New(fiberzap.Config{
+		Logger: logger,
+	}))
+	logger.Info("Added Logging Middleware.")
 
 	// Middleware to recover from panics
 	app.Use(recover.New())
