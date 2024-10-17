@@ -9,6 +9,7 @@ import (
 	"packagelock/db"
 	"packagelock/logger"
 	"packagelock/structs"
+	"packagelock/tracing"
 	"time"
 
 	configPkg "packagelock/config"
@@ -43,6 +44,7 @@ func NewGenerateCmd() *cobra.Command {
 					logger.Module,
 					configPkg.Module,
 					certs.Module,
+					tracing.Module,
 					fx.Invoke(runGenerateCerts),
 				)
 
@@ -62,6 +64,7 @@ func NewGenerateCmd() *cobra.Command {
 					certs.Module,
 					logger.Module,
 					configPkg.Module,
+					tracing.Module,
 					fx.Invoke(runGenerateConfig),
 				)
 
@@ -82,6 +85,7 @@ func NewGenerateCmd() *cobra.Command {
 					config.Module,
 					logger.Module,
 					db.Module,
+					tracing.Module,
 					fx.Invoke(runGenerateAdmin),
 				)
 
