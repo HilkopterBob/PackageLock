@@ -11,6 +11,7 @@ import (
 	"packagelock/handler"
 	"packagelock/logger"
 	"packagelock/server"
+	"packagelock/tracing"
 
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
@@ -39,6 +40,7 @@ func main() {
 		handler.Module, // Include the handlers module
 		server.Module,  // Include the server module
 		cmd.Module,     // Include the commands module
+		tracing.Module, // Include the tracing module
 	)
 
 	if err := app.Start(context.Background()); err != nil {

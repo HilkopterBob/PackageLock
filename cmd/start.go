@@ -11,6 +11,7 @@ import (
 	"packagelock/handler"
 	"packagelock/logger"
 	"packagelock/server"
+	"packagelock/tracing"
 	"syscall"
 
 	"github.com/gofiber/fiber/v2"
@@ -37,6 +38,7 @@ func NewStartCmd() *cobra.Command {
 			db.Module,
 			handler.Module,
 			server.Module,
+			tracing.Module,
 			fx.Invoke(func(*fiber.App) {}),
 		)
 
