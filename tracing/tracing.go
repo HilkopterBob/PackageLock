@@ -18,6 +18,9 @@ import (
 )
 
 // NewTracerProvider creates and configures a new TracerProvider
+// It looks for two env flags:
+//   - 'TRACING_ENABLED' -> enables tracing, if not set/false uses noop-tracer
+//   - 'TRACING_JAEGER_URL' -> sets custom jaeger url, if not set uses default localhost
 func NewTracerProvider(logger *zap.Logger) (*sdktrace.TracerProvider, error) {
 	tracingEnabled := os.Getenv("TRACING_ENABLED") == "true"
 	if !tracingEnabled {
@@ -25,11 +28,30 @@ func NewTracerProvider(logger *zap.Logger) (*sdktrace.TracerProvider, error) {
 		return sdktrace.NewTracerProvider(), nil // Returns a TracerProvider with no exporters
 	}
 	logger.Info("Tracing is enabled via ENV-FLAG ('TRACING_ENABLED'). Using TracerProvider.")
-	// Configure the Jaeger exporter
-	exporter, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint("http://localhost:14268/api/traces")))
-	if err != nil {
-		logger.Error("Failed to create Jaeger exporter", zap.Error(err))
-		return nil, fmt.Errorf("failed to create Jaeger exporter: %w", err)
+
+	var exporter *jaeger.Exporter
+	var exporterErr error
+
+	jaegerAddress := os.Getenv("TRACING_JAEGER_URL")
+
+	if jaegerAddress != "" {
+
+		// Configure the Jaeger exporter with custom URL from ENV-FLAG
+		exporter, exporterErr = jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(jaegerAddress)))
+		if exporterErr != nil {
+			logger.Error("Failed to create Jaeger exporter", zap.Error(exporterErr))
+			return nil, fmt.Errorf("failed to create Jaeger exporter: %w", exporterErr)
+		}
+		logger.Info("Configured Jaeger exporter with custom url from ENV-FLAG.")
+
+	} else {
+
+		// Configure the Jaeger exporter with default url
+		exporter, exporterErr = jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint("http://localhost:14268/api/traces")))
+		if exporterErr != nil {
+			logger.Error("Failed to create Jaeger exporter", zap.Error(exporterErr))
+			return nil, fmt.Errorf("failed to create Jaeger exporter: %w", exporterErr)
+		}
 	}
 
 	// Create the TracerProvider with batching and resource attributes
