@@ -16,7 +16,7 @@ RUN go mod download
 
 
 # Build
-ARG TRACING_ENABLED=true
+ENV TRACING_ENABLED=true
 ARG APP_VERSION="v0.1.0+hotfixes"
 RUN \
   CGO_ENABLED=0 GOOS=linux go build -ldflags "-X 'main.AppVersion=$APP_VERSION'" -o /app/packagelock
