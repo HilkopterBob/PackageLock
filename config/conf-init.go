@@ -14,9 +14,10 @@ import (
 	"go.uber.org/zap"
 )
 
+var AppVersion string
+
 type ConfigParams struct {
 	fx.In
-
 	Lifecycle     fx.Lifecycle
 	Logger        *zap.Logger
 	AppVersion    string

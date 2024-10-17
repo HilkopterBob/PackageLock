@@ -18,8 +18,7 @@ import (
 	"go.uber.org/zap"
 )
 
-var AppVersion string // Version injected with ldflags
-
+// var AppVersion string // Version injected with ldflags
 func main() {
 	app := fx.New(
 		fx.WithLogger(func(log *zap.Logger) fxevent.Logger {
@@ -30,7 +29,7 @@ func main() {
 
 		fx.Provide(
 			func() string {
-				return AppVersion
+				return "test" // AppVersion
 			},
 			logger.NewLogger,
 			config.NewConfig,

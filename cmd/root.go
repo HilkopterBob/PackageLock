@@ -33,6 +33,7 @@ func NewRootCmd() *cobra.Command {
 	rootCmd.AddCommand(NewSetupCmd())
 	rootCmd.AddCommand(NewGenerateCmd())
 	rootCmd.AddCommand(NewPrintRoutesCmd())
+	rootCmd.AddCommand(NewUpdateCommand())
 
 	return rootCmd
 }

@@ -19,6 +19,8 @@ import (
 	"go.uber.org/fx"
 )
 
+var AppVersion string
+
 func NewStartCmd() *cobra.Command {
 	startCmd := &cobra.Command{
 		Use:   "start",
@@ -29,7 +31,12 @@ func NewStartCmd() *cobra.Command {
 		app := fx.New(
 			fx.Provide(
 				func() string {
-					return "1.0.0" // Replace with actual version
+					if AppVersion == "" {
+						// AppVersion is injected at compile time,
+						// so we return a placeholder.
+						return "development-version"
+					}
+					return AppVersion
 				},
 				logger.NewLogger,
 				config.NewConfig,

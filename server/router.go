@@ -50,9 +50,9 @@ func NewServer(params ServerParams) *fiber.App {
 
 	// Middleware for logging
 	app.Use(fiberzap.New(fiberzap.Config{
-		Logger: logger,
+		Logger: params.Logger,
 	}))
-	logger.Info("Added Logging Middleware.")
+	params.Logger.Info("Added Logging Middleware.")
 
 	// Middleware to recover from panics
 	app.Use(recover.New())
