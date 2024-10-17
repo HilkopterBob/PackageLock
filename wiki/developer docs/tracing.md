@@ -24,6 +24,9 @@ docker run -d --name jaeger \
   -p 9411:9411 \
   jaegertracing/all-in-one:latest
 ```
+  -  If Jaeger is running somewhere else, specify the location  
+      with: `$ export TRACING_JAEGER_URL=http://<ip/domain name>:<port>/api/traces`  
+
 3. start PackageLock (eg. `go run . start`)
 
 PackageLock now traces itself and exports it to the `jaeger` Container.
