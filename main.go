@@ -14,12 +14,20 @@ import (
 	"packagelock/tracing"
 
 	"go.uber.org/fx"
+	"go.uber.org/fx/fxevent"
+	"go.uber.org/zap"
 )
 
 var AppVersion string // Version injected with ldflags
 
 func main() {
 	app := fx.New(
+		fx.WithLogger(func(log *zap.Logger) fxevent.Logger {
+			return &fxevent.ZapLogger{Logger: log}
+		}),
+
+		// fx.NopLogger,
+
 		fx.Provide(
 			func() string {
 				return AppVersion

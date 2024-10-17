@@ -6,6 +6,7 @@ import (
 	"packagelock/handler"
 	"strconv"
 
+	"github.com/gofiber/contrib/fiberzap"
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/contrib/otelfiber"
 	"github.com/gofiber/fiber/v2"
@@ -46,6 +47,12 @@ func NewServer(params ServerParams) *fiber.App {
 		app.Use(otelfiber.Middleware(otelfiber.WithTracerProvider(otel.GetTracerProvider())))
 		params.Logger.Info("Added OpenTelemetry Middleware.")
 	}
+
+	// Middleware for logging
+	app.Use(fiberzap.New(fiberzap.Config{
+		Logger: logger,
+	}))
+	logger.Info("Added Logging Middleware.")
 
 	// Middleware to recover from panics
 	app.Use(recover.New())

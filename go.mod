@@ -24,6 +24,8 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/gofiber/contrib/otelfiber v1.0.10 // indirect
 	github.com/gofiber/contrib/otelfiber/v2 v2.1.1 // indirect
+	github.com/gofiber/contrib/fiberzap v1.0.2 // indirect
+	github.com/gofiber/contrib/fiberzap/v2 v2.1.4 // indirect
 	github.com/gofiber/template v1.8.3 // indirect
 	github.com/gofiber/utils v1.1.0 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
@@ -56,6 +58,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.31.0 // indirect
 	go.opentelemetry.io/otel/trace v1.31.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
+	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/dig v1.18.0 // indirect
 	go.uber.org/fx v1.23.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
