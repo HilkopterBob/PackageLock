@@ -128,6 +128,7 @@ func CreateDefaultConfig(config *viper.Viper, logger *zap.Logger) {
 general:
   debug: true
   production: false
+	monitoring: true
 database:
   address: 127.0.0.1
   port: 8000
