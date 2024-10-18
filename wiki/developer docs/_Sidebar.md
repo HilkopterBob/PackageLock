@@ -1,21 +1,13 @@
 # Navigation
 
 - [Home][home]
+- [Dev-Home][dev-home]
+- [Getting Started][getting-started]
+- [Contributing][contributing]
+- [FAQ][faq]
 
 [home]: Home
-
-- Dev-Home
-
 [dev-home]: Dev-Home
-
-- Getting Started
-
 [getting-started]: Getting-Started
-
-- Contributing
-
 [contributing]: Contributing
-
-- FAQ
-
 [faq]: FAQ
