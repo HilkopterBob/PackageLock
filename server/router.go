@@ -11,6 +11,7 @@ import (
 	"github.com/gofiber/contrib/otelfiber"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/gofiber/fiber/v2/middleware/healthcheck"
 	"github.com/gofiber/template/html/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/spf13/viper"
@@ -57,6 +58,16 @@ func NewServer(params ServerParams) *fiber.App {
 	// Middleware to recover from panics
 	app.Use(recover.New())
 	params.Logger.Info("Added Recovery Middleware.")
+
+
+	// Middleware for healthcheck
+	app.Use(healthcheck.New(healthcheck.Config{
+		LivenessProbe: func(c *fiber.Ctx) bool {
+			return true
+		},
+		LivenessEndpoint: "/health",
+	}))
+	params.Logger.Info("Added HealtCheck Middleware.")
 
 	// Add routes
 	addRoutes(app, params)
