@@ -22,16 +22,42 @@ jobs:
         id: version
         run: echo "APP_VERSION=nightly-build:$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
-      - name: Create Release
+      - name: Get Existing Release
+        id: get_release
+        uses: actions/github-script@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          script: |
+            const { data: releases } = await github.repos.listReleases({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            const nightlyRelease = releases.find(release => release.tag_name === 'nightly');
+            if (nightlyRelease) {
+              core.setOutput('upload_url', nightlyRelease.upload_url);
+              core.setOutput('release_id', nightlyRelease.id);
+            }
+
+      - name: Create Release if Not Exists
+        if: steps.get_release.outputs.upload_url == ''
         id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: "nightly"
-          release_name: "Nightly Builds"
+          release_name: "Nightly Build"
           draft: false
           prerelease: true
+        continue-on-error: true
+
+      - name: Set Upload URL
+        if: steps.get_release.outputs.upload_url != ''
+        run: echo "UPLOAD_URL=${{ steps.get_release.outputs.upload_url }}" >> $GITHUB_ENV
+      - name: Set Upload URL from New Release
+        if: steps.create_release.outputs.upload_url != ''
+        run: echo "UPLOAD_URL=${{ steps.create_release.outputs.upload_url }}" >> $GITHUB_ENV
 
       - name: Build Go Application
         run: |
@@ -55,7 +81,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          upload_url: ${{ env.UPLOAD_URL }}
           asset_path: ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz
           asset_name: packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz
           asset_content_type: application/gzip
@@ -66,7 +92,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          upload_url: ${{ env.UPLOAD_URL }}
           asset_path: ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz.md5
           asset_name: packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz.md5
           asset_content_type: text/plain
