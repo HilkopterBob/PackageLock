@@ -22,6 +22,17 @@ jobs:
         id: version
         run: echo "APP_VERSION=nightly-build:$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: "nightly"
+          release_name: "Nightly Builds"
+          draft: false
+          prerelease: true
+
       - name: Build Go Application
         run: |
           mkdir -p ${{ github.workspace }}/packagelock
@@ -36,7 +47,7 @@ jobs:
 
       - name: Calculate Checksum
         run: |
-          md5sum ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz | cut -f 1 -d " " > ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz.md5
+          md5sum ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz | cut -f 1 -d " " > ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz.md5
 
       - name: Upload Release Tarball
         id: upload-release-asset
@@ -44,7 +55,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: https://api.github.com/repos/HilkopterBob/PackageLock/releases/180504390/assets
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz
           asset_name: packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz
           asset_content_type: application/gzip
@@ -55,7 +66,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: https://api.github.com/repos/HilkopterBob/PackageLock/releases/180504390/assets
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz.md5
           asset_name: packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz.md5
           asset_content_type: text/plain
