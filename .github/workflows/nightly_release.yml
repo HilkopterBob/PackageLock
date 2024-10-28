@@ -43,7 +43,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload 180504390 \
+          gh release upload nightly \
             release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz \
             release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz.md5 \
             --clobber
