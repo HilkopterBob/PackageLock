@@ -22,44 +22,28 @@ jobs:
         id: version
         run: |
           VERSION="unstable"
-          VERSION=${VERSION#refs/tags/}
           echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Build Go Application
         run: |
-          mkdir -p ${{ github.workspace }}/packagelock
           APP_VERSION=${{ env.APP_VERSION }}
-          CGO_ENABLED=0 GOOS=linux go build -ldflags "-X 'main.AppVersion=$APP_VERSION'" -o ${{ github.workspace }}/packagelock
+          CGO_ENABLED=0 GOOS=linux go build -ldflags "-X 'main.AppVersion=$APP_VERSION'" -o packagelock
 
       - name: Create Release Archive
         run: |
           mkdir -p release
-          cp -r ${{ github.workspace }}/packagelock ./release/packagelock
+          mv packagelock release/
           tar -czvf release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz -C release packagelock
 
       - name: Calculate Checksum
         run: |
-          md5sum ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz | cut -f 1 -d " " > ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz.md5
+          md5sum release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz | cut -f1 -d' ' > release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz.md5
 
-
-      - name: Upload Release Tarball
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
+      - name: Upload Assets to Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: https://api.github.com/repos/HilkopterBob/PackageLock/releases/180504390/assets
-          asset_path: ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz
-          asset_name: packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz
-          asset_content_type: application/gzip
-
-      - name: Upload Checksum
-        id: upload-checksum-asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: https://api.github.com/repos/HilkopterBob/PackageLock/releases/180504390/assets
-          asset_path: ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz.md5
-          asset_name: packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz.md5
-          asset_content_type: text/plain
+        run: |
+          gh release upload 180504390 \
+            release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz \
+            release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz.md5 \
+            --clobber
