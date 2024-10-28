@@ -41,6 +41,7 @@ jobs:
         run: |
           md5sum ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz | cut -f 1 -d " " > ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz.md5
 
+
       - name: Upload Release Tarball
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
