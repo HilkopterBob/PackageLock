@@ -18,46 +18,12 @@ jobs:
         with:
           ref: devel
 
-      - name: Set Version as Date
+      - name: Set APP_VERSION
         id: version
-        run: echo "APP_VERSION=nightly-build:$(date +'%Y-%m-%d')" >> $GITHUB_ENV
-
-      - name: Get Existing Release
-        id: get_release
-        uses: actions/github-script@v6
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          script: |
-            const { data: releases } = await github.repos.listReleases({
-              owner: context.repo.owner,
-              repo: context.repo.repo
-            });
-            const nightlyRelease = releases.find(release => release.tag_name === 'nightly');
-            if (nightlyRelease) {
-              core.setOutput('upload_url', nightlyRelease.upload_url);
-              core.setOutput('release_id', nightlyRelease.id);
-            }
-
-      - name: Create Release if Not Exists
-        if: steps.get_release.outputs.upload_url == ''
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: "nightly"
-          release_name: "Nightly Build"
-          draft: false
-          prerelease: true
-        continue-on-error: true
-
-      - name: Set Upload URL
-        if: steps.get_release.outputs.upload_url != ''
-        run: echo "UPLOAD_URL=${{ steps.get_release.outputs.upload_url }}" >> $GITHUB_ENV
-      - name: Set Upload URL from New Release
-        if: steps.create_release.outputs.upload_url != ''
-        run: echo "UPLOAD_URL=${{ steps.create_release.outputs.upload_url }}" >> $GITHUB_ENV
+        run: |
+          VERSION="unstable"
+          VERSION=${VERSION#refs/tags/}
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Build Go Application
         run: |
@@ -73,7 +39,8 @@ jobs:
 
       - name: Calculate Checksum
         run: |
-          md5sum ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz | cut -f 1 -d " " > ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz.md5
+          md5sum ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz | cut -f 1 -d " " > ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz.md5
+
 
       - name: Upload Release Tarball
         id: upload-release-asset
@@ -81,7 +48,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ env.UPLOAD_URL }}
+          upload_url: https://api.github.com/repos/HilkopterBob/PackageLock/releases/180504390/assets
           asset_path: ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz
           asset_name: packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz
           asset_content_type: application/gzip
@@ -92,7 +59,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ env.UPLOAD_URL }}
+          upload_url: https://api.github.com/repos/HilkopterBob/PackageLock/releases/180504390/assets
           asset_path: ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz.md5
           asset_name: packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz.md5
           asset_content_type: text/plain
