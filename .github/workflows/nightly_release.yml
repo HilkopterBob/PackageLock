@@ -18,26 +18,35 @@ jobs:
         with:
           ref: devel
 
-      - name: Set APP_VERSION
+      - name: Set APP_VERSION with Date
         id: version
         run: |
-          VERSION="unstable"
+          DATE=$(date +%Y%m%d)
+          VERSION="unstable-${DATE}"
           echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Build Go Application
         run: |
           APP_VERSION=${{ env.APP_VERSION }}
-          CGO_ENABLED=0 GOOS=linux go build -ldflags "-X 'main.AppVersion=$APP_VERSION'" -o packagelock
+          CGO_ENABLED=0 GOOS=linux go build -ldflags "-X 'main.AppVersion=$APP_VERSION'" -o packagelock-${APP_VERSION}
 
       - name: Create Release Archive
         run: |
           mkdir -p release
-          mv packagelock release/
-          tar -czvf release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz -C release packagelock
+          mv packagelock-${{ env.APP_VERSION }} release/
+          tar -czvf release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz -C release packagelock-${{ env.APP_VERSION }}
 
       - name: Calculate Checksum
         run: |
           md5sum release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz | cut -f1 -d' ' > release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz.md5
+
+      - name: Create Nightly Release if it doesn't exist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ! gh release view nightly > /dev/null 2>&1; then
+            gh release create nightly -t "Nightly Release" -n "Automated Nightly Build"
+          fi
 
       - name: Upload Assets to Release
         env:
