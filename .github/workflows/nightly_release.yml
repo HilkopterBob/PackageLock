@@ -2,12 +2,8 @@ name: Nightly Release
 
 on:
   schedule:
-  - cron: "0 0 * * *"
+    - cron: "0 0 * * *"
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to release (e.g., 1.0.0)'
-        required: true
 
 jobs:
   release:
@@ -19,53 +15,44 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          ref: devel
 
-
-      - name: Set APP_VERSION
+      - name: Set APP_VERSION with Date
         id: version
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            VERSION=${{ github.event.inputs.version }}
-          else
-            VERSION=${{ github.ref }}
-            VERSION=${VERSION#refs/tags/}
-          fi
+          DATE=$(date +%Y%m%d)
+          VERSION="unstable-${DATE}"
           echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Build Go Application
         run: |
-          mkdir -p ${{ github.workspace }}/packagelock
           APP_VERSION=${{ env.APP_VERSION }}
-          CGO_ENABLED=0 GOOS=linux go build -ldflags "-X 'main.AppVersion=$APP_VERSION'" -o ${{ github.workspace }}/packagelock
+          CGO_ENABLED=0 GOOS=linux go build -ldflags "-X 'main.AppVersion=$APP_VERSION'" -o packagelock-${APP_VERSION}
 
       - name: Create Release Archive
         run: |
           mkdir -p release
-          cp -r ${{ github.workspace }}/packagelock ./release/packagelock
-          tar -czvf release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz -C release packagelock
+          mv packagelock-${{ env.APP_VERSION }} release/
+          tar -czvf release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz -C release packagelock-${{ env.APP_VERSION }}
 
       - name: Calculate Checksum
-        run: | 
-          md5sum ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz | cut -f 1 -d " " > ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64.tar.gz.md5
+        run: |
+          md5sum release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz | cut -f1 -d' ' > release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz.md5
 
-      - name: Upload Release Tarball
-        id: upload-release-asset 
-        uses: actions/upload-release-asset@v1
+      - name: Create Nightly Release if it doesn't exist
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: https://api.github.com/repos/HilkopterBob/PackageLock/releases/180504390/assets
-          asset_path: ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz
-          asset_name: packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz
-          asset_content_type: application/gzip
+        run: |
+          if ! gh release view nightly > /dev/null 2>&1; then
+            gh release create nightly -t "Nightly Release" -n "Automated Nightly Build"
+          fi
 
-      - name: Upload Checksum
-        id: upload-checksum-asset 
-        uses: actions/upload-release-asset@v1
+      - name: Upload Assets to Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: https://api.github.com/repos/HilkopterBob/PackageLock/releases/180504390/assets
-          asset_path: ./release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz.md5
-          asset_name: packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz.md5
-          asset_content_type: text/plain
+        run: |
+          gh release upload nightly \
+            release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz \
+            release/packagelock-${{ env.APP_VERSION }}-linux-amd64-nightly.tar.gz.md5 \
+            --clobber
