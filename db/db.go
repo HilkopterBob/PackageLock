@@ -1,69 +1,108 @@
 package db
 
 import (
-	"packagelock/config"
-	"packagelock/logger"
+	"context"
+	"fmt"
 
+	"github.com/spf13/viper"
 	"github.com/surrealdb/surrealdb.go"
+	"go.opentelemetry.io/otel/codes" // Import for setting span status
+	"go.opentelemetry.io/otel/trace"
+	"go.uber.org/fx"
+	"go.uber.org/zap"
 )
 
-var DB *surrealdb.DB
+type DatabaseParams struct {
+	fx.In
 
-func InitDB() error {
-	dbAddress := config.Config.GetString("database.address")
-	dbPort := config.Config.GetString("database.port")
-	dbUsername := config.Config.GetString("database.username")
-	dbPasswd := config.Config.GetString("database.password")
+	Lifecycle fx.Lifecycle
+	Logger    *zap.Logger
+	Config    *viper.Viper
+	Tracer    trace.Tracer // Injected Tracer from OpenTelemetry
+}
 
-	db, err := surrealdb.New("ws://" + dbAddress + ":" + dbPort + "/rpc")
+type Database struct {
+	DB     *surrealdb.DB
+	Logger *zap.Logger
+	Tracer trace.Tracer
+}
+
+// Module exports the database module.
+var Module = fx.Options(
+	fx.Provide(NewDatabase),
+)
+
+// NewDatabase initializes the database connection using the provided configuration and logger.
+func NewDatabase(params DatabaseParams) (*Database, error) {
+	// Start a new span for the database initialization
+	_, span := params.Tracer.Start(context.Background(), "Database Initialization")
+	defer span.End()
+
+	dbAddress := params.Config.GetString("database.address")
+	dbPort := params.Config.GetString("database.port")
+	dbUsername := params.Config.GetString("database.username")
+	dbPasswd := params.Config.GetString("database.password")
+
+	connString := fmt.Sprintf("ws://%s:%s/rpc", dbAddress, dbPort)
+
+	db, err := surrealdb.New(connString)
 	if err != nil {
-		logger.Logger.Errorf(` Couldn't connect to DB! Got: '%s'.
-		1. Check the config for a wrong Address/Port (Currently: %s:%s)
-		2. Check if the DB is reachable (eg. a Ping). Check the Firewalls if there.
-		3. Consult the PackageLock Doc's! 🚀
-		Golang Trace Logs:
-			`, err.Error(), dbAddress, dbPort)
+		params.Logger.Error("Couldn't connect to DB!",
+			zap.Error(err),
+			zap.String("address", dbAddress),
+			zap.String("port", dbPort),
+			zap.String("connString", connString),
+		)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "Failed to connect to DB")
+		return nil, err
 	}
 
+	// Sign in to the database
 	if _, err = db.Signin(map[string]interface{}{
 		"user": dbUsername,
 		"pass": dbPasswd,
 	}); err != nil {
-		logger.Logger.Errorf(` Couldn't connect to DB! Got: '%s'.
-		1. Check the config for a wrong DB-Username/Password (Currently: %s/<read the config!>)
-		3. Consult the PackageLock Doc's! 🚀
-		Golang Trace Logs:
-			`, err.Error(), dbUsername)
+		params.Logger.Error("Couldn't sign in to DB!",
+			zap.Error(err),
+			zap.String("username", dbUsername),
+		)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "Failed to sign in to DB")
+		return nil, err
 	}
 
+	// Use the specified namespace and database
 	if _, err = db.Use("PackageLock", "db1.0"); err != nil {
-		// No error handling possible, as we need to use this db
-		logger.Logger.Panicf("Couldn't Use 'PackageLock' Namespace and 'db1.0' Database. Got: %s", err)
+		params.Logger.Panic("Couldn't use 'PackageLock' Namespace and 'db1.0' Database.",
+			zap.Error(err),
+		)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "Failed to use Namespace and Database")
+		return nil, err
 	}
 
-	DB = db
+	params.Logger.Info("Successfully connected to DB.",
+		zap.String("address", dbAddress),
+		zap.String("port", dbPort),
+	)
+	span.AddEvent("Successfully connected and authenticated to DB")
 
-	logger.Logger.Infof("Successfully Connected to DB, at: %s:%s", dbAddress, dbPort)
-	return nil
-}
-
-// INFO:  If you use this, fix it!
-// INFO: 	And add logging/error handling
-func Select(tablename string, SliceOfType interface{}) error {
-	transaction, err := DB.Select(tablename)
-	if err != nil {
-		// FIXME: logging?
-		// Error handling
-		panic(err)
+	database := &Database{
+		DB:     db,
+		Logger: params.Logger,
+		Tracer: params.Tracer,
 	}
 
-	err = surrealdb.Unmarshal(transaction, &SliceOfType)
-	if err != nil {
-		// FIXME: Logging?
-		// Error Handling?
-		panic(err)
-	}
+	// Use Lifecycle to manage the database connection
+	params.Lifecycle.Append(fx.Hook{
+		OnStop: func(ctx context.Context) error {
+			params.Logger.Info("Closing database connection.")
+			span.AddEvent("Closing database connection")
+			db.Close()
+			return nil
+		},
+	})
 
-	// FIXME: Add Success msg in Log!
-	return nil
+	return database, nil
 }

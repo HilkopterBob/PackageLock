@@ -1,5 +1,5 @@
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/HilkopterBob/PackageLock/.github%2Fworkflows%2Frun-tests.yml)
-![GitHub Actions Workflow Status](https://github.com/hilkopterbob/packagelock/actions/workflows/test-build.yml/badge.svg)
+![GitHub Actions Workflow Status](https://github.com/hilkopterbob/packagelock/actions/workflows/release_tag.yml/badge.svg)
 ![GitHub Actions Workflow Status](https://github.com/hilkopterbob/packagelock/actions/workflows/golangci-lint.yml/badge.svg)
 ![GitHub Actions Workflow Status](https://github.com/hilkopterbob/packagelock/actions/workflows/build-docker-container.yml/badge.svg)
 ![GitHub Actions Workflow Status](https://github.com/hilkopterbob/packagelock/actions/workflows/unstable-build-docker-container.yml/badge.svg)
