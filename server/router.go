@@ -6,6 +6,7 @@ import (
 	"packagelock/handler"
 	"strconv"
 
+	"github.com/ansrivas/fiberprometheus/v2"
 	"github.com/gofiber/contrib/fiberzap"
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/contrib/otelfiber"
@@ -66,6 +67,21 @@ func NewServer(params ServerParams) *fiber.App {
 	app.Use(recover.New())
 	params.Logger.Info("Added Recovery Middleware.")
 
+	// Middleware to export Prometheus Metrics at: 'addr:port/metrics'
+	if params.Config.GetString("general.monitoring") == "true" {
+		prometheus := fiberprometheus.New("PackageLock")
+		prometheus.RegisterAt(app, "/metrics")
+
+		// following path's will be ignored.
+		// As prometheus exports how often a path got called,
+		// we ignore everything authentication related (even misstypes)
+		// to cancel out possible sidechannel attack's
+		prometheus.SetSkipPaths([]string{"/auth/login", "/v1/auth/login", "/auth", "/login"})
+
+		app.Use(prometheus.Middleware)
+		params.Logger.Info("Added Monitoring Middleware.")
+	}
+  
 	// Middleware for healthcheck
 	app.Use(healthcheck.New(healthcheck.Config{
 		LivenessProbe: func(c *fiber.Ctx) bool {
