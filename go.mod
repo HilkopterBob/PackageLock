@@ -3,7 +3,7 @@ module packagelock
 go 1.22.6
 
 require (
-	github.com/ansrivas/fiberprometheus v0.3.2
+	github.com/ansrivas/fiberprometheus/v2 v2.7.0
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/gofiber/contrib/fiberzap v1.0.2
 	github.com/gofiber/contrib/jwt v1.0.10
@@ -30,15 +30,12 @@ require (
 require (
 	github.com/MicahParks/keyfunc/v2 v2.1.0 // indirect
 	github.com/andybalholm/brotli v1.1.1 // indirect
-	github.com/ansrivas/fiberprometheus/v2 v2.7.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/gofiber/fiber v1.14.4 // indirect
 	github.com/gofiber/template v1.8.3 // indirect
 	github.com/gofiber/utils v1.1.0 // indirect
-	github.com/gorilla/schema v1.1.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
