@@ -11,6 +11,8 @@ import (
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/contrib/otelfiber"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/healthcheck"
+	"github.com/gofiber/fiber/v2/middleware/monitor"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/template/html/v2"
 	"github.com/golang-jwt/jwt/v5"
@@ -49,6 +51,12 @@ func NewServer(params ServerParams) *fiber.App {
 		params.Logger.Info("Added OpenTelemetry Middleware.")
 	}
 
+	// Middleware for simple resource Monitor
+	// only use in Non-Production mode
+	if !params.Config.GetBool("general.production") {
+		app.Get("/monitor", monitor.New(monitor.Config{Title: "PackageLock Dev Monitoring Page"}))
+	}
+
 	// Middleware for logging
 	app.Use(fiberzap.New(fiberzap.Config{
 		Logger: params.Logger,
@@ -73,6 +81,20 @@ func NewServer(params ServerParams) *fiber.App {
 		app.Use(prometheus.Middleware)
 		params.Logger.Info("Added Monitoring Middleware.")
 	}
+  
+	// Middleware for healthcheck
+	app.Use(healthcheck.New(healthcheck.Config{
+		LivenessProbe: func(c *fiber.Ctx) bool {
+			return true
+		},
+		LivenessEndpoint: "/livez",
+
+		ReadinessProbe: func(c *fiber.Ctx) bool {
+			return true
+		},
+		ReadinessEndpoint: "/readyz",
+	}))
+	params.Logger.Info("Added HealtCheck Middleware.")
 
 	// Add routes
 	addRoutes(app, params)
