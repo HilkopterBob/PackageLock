@@ -5,6 +5,7 @@ import (
 	"os"
 	"packagelock/handler"
 	"strconv"
+	"strings" // Added import for strings package
 
 	"github.com/ansrivas/fiberprometheus/v2"
 	"github.com/gofiber/contrib/fiberzap"
@@ -72,16 +73,16 @@ func NewServer(params ServerParams) *fiber.App {
 		prometheus := fiberprometheus.New("PackageLock")
 		prometheus.RegisterAt(app, "/metrics")
 
-		// following path's will be ignored.
-		// As prometheus exports how often a path got called,
-		// we ignore everything authentication related (even misstypes)
-		// to cancel out possible sidechannel attack's
+		// Following paths will be ignored.
+		// As Prometheus exports how often a path got called,
+		// we ignore everything authentication related (even mis-types)
+		// to cancel out possible side-channel attacks
 		prometheus.SetSkipPaths([]string{"/auth/login", "/v1/auth/login", "/auth", "/login"})
 
 		app.Use(prometheus.Middleware)
 		params.Logger.Info("Added Monitoring Middleware.")
 	}
-  
+
 	// Middleware for healthcheck
 	app.Use(healthcheck.New(healthcheck.Config{
 		LivenessProbe: func(c *fiber.Ctx) bool {
@@ -90,11 +91,15 @@ func NewServer(params ServerParams) *fiber.App {
 		LivenessEndpoint: "/livez",
 
 		ReadinessProbe: func(c *fiber.Ctx) bool {
+			c.JSON(fiber.Map{
+				"message": "OK",
+				"status":  "ok",
+			})
 			return true
 		},
 		ReadinessEndpoint: "/readyz",
 	}))
-	params.Logger.Info("Added HealtCheck Middleware.")
+	params.Logger.Info("Added HealthCheck Middleware.")
 
 	// Add routes
 	addRoutes(app, params)
@@ -158,6 +163,23 @@ func addRoutes(app *fiber.App, params ServerParams) {
 		addAgentHandler(v1, params)
 		addHostHandler(v1, params)
 	}
+
+	// Serve static files from the React build directory
+	params.Logger.Info("Adding React-Build output.")
+	app.Static("/", "./web/build")
+
+	// Handle client-side routing by serving index.html for unmatched routes
+	app.Use(func(c *fiber.Ctx) error {
+		path := c.Path()
+		if strings.HasPrefix(path, "/api") || strings.HasPrefix(path, "/v1") || strings.HasPrefix(path, "/auth") || path == "/metrics" || path == "/livez" || path == "/readyz" {
+			// Let the next middleware handle it
+			return c.Next()
+		}
+		if err := c.SendFile("./web/build/index.html"); err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Internal Server Error")
+		}
+		return nil
+	})
 }
 
 func startServer(app *fiber.App, params ServerParams) {

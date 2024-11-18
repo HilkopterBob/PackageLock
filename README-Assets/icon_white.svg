@@ -1,0 +1,16 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+    <!-- Background Rectangle -->
+    <rect width="512" height="512" fill="#21232B"></rect>
+    <!-- Centered Circle -->
+    <circle cx="256" cy="256" r="210" fill="transparent" stroke="#FFFFFF" stroke-width="12"></circle>
+    <!-- Centered Logo -->
+    <g transform="translate(256, 256) scale(3)">
+        <path d="M49.497 4.979L11.994 27.484V72.496L49.497 95 87 72.497V27.484z
+                 M49.497 12.349L60.023 18.666 31.097 35.149 21.247 29.304z
+                 M46.702 85.95L18.139 68.81V34.81L27.622 40.437V49.99L33.255 53.269V43.78L46.703 51.76V85.95z
+                 M36.957 38.626L65.557 21.987 77.854 29.367 49.81 46.254z
+                 M80.859 68.809L52.843 85.62V51.807L80.859 34.935z"
+              fill="#FFFFFF"
+              transform="translate(-49.497, -49.9895)"></path>
+    </g>
+</svg>
